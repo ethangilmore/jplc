@@ -1,0 +1,18 @@
+fn color(p: rgba) : rgba {
+    let r = 0.393 * p.r + 0.769 * p.g + 0.189 * p.b
+    let g = 0.349 * p.r + 0.686 * p.g + 0.168 * p.b
+    let b = 0.272 * p.r + 0.534 * p.g + 0.131 * p.b
+    return rgba{ \
+        if r > 1.0 then 1.0 else r, \
+        if g > 1.0 then 1.0 else g, \
+        if b > 1.0 then 1.0 else b, \
+        1.0 \
+    }
+}
+
+fn sepia(img[H, W]: rgba[,]) : rgba[,] {
+    return array[i : H, j : W] color(img[i, j])
+}
+
+read image "sample.png" to img
+write image sepia(img) to "sample-sepia.png"

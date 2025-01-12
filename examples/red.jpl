@@ -1,0 +1,6 @@
+fn red (W : int, H : int) : rgba[,] {
+    let img = array[i : H, j : W] rgba {1.0, 0.0, 0.0, 1.0}
+    return img
+}
+
+write image red(800, 600) to "red.png"

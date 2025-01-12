@@ -1,0 +1,14 @@
+fn color(i : int, j : int, rad : float, width : float) : rgba {
+    let dx = to_float(i) - 300.0
+    let dy = to_float(j) - 400.0
+    let d = dx * dx + dy * dy
+    let ir = rad - width / 2.0
+    let or = rad + width / 2.0
+    return if d > ir * ir && d < or * or then rgba{1.0, 1.0, 1.0, 1.0} else rgba{0.0, 0.0, 0.0, 1.0}
+}
+
+fn circle(rad : float, width : float) : rgba[,] {
+    return array[i : 600, j : 800] color(i, j, rad, width)
+}
+
+write image circle(400.0, 10.0) to "circle.png"

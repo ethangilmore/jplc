@@ -1,0 +1,19 @@
+fn pad(img[H, W] : rgba[,], i : int, j : int) : rgba {
+    return if (i == 0 || i == H+1 || j == 0 || j == W+1) then rgba{0.0, 0.0, 0.0, 0.0} else img[i-1,j-1]
+}
+
+fn avg(padded[H, W] : rgba[,], i : int, j : int) : rgba {
+    let neighbors = sum[ii : 3, jj : 3] padded[i+ii, j+jj].a
+    let r = (sum[ii : 3, jj : 3] padded[i+ii, j+jj].r) / neighbors
+    let g = (sum[ii : 3, jj : 3] padded[i+ii, j+jj].g) / neighbors
+    let b = (sum[ii : 3, jj : 3] padded[i+ii, j+jj].b) / neighbors
+    return rgba{r, g, b, 1.0}
+}
+
+fn blur(img[H,W] : rgba[,]) : rgba[,] {
+    let padded = array[i : H+2, j : W+2] pad(img, i, j)
+    return array[i : H, j : W] avg(padded, i, j)
+}
+
+read image "sample.png" to img
+write image blur(img) to "sample-blurry.png"
