@@ -14,6 +14,8 @@ build/%.o: src/%.cpp
 	@mkdir -p build
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+compile: $(EXEC)
+
 run: $(EXEC)
 	./$(EXEC) $(TEST)
 
