@@ -146,7 +146,7 @@ std::optional<Token> Lexer::lex_string() {
       std::cout << "Compilation failed" << std::endl;
       exit(1);
     }
-    value += stream.get();
+    value += c;
   }
   value += stream.get();
   return Token{Token::Type::String, start, value};
