@@ -30,4 +30,7 @@ int main(int argc, char *argv[]) {
     Token token = lexer.next();
     std::cout << token.toString() << std::endl;
   }
+  Token token = Token(Token::Type::Eof, input.tellg());
+  std::cout << token.toString() << std::endl;
+  std::cout << "Compilation succeeded" << std::endl;
 }
