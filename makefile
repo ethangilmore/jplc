@@ -1,4 +1,4 @@
-CXX = clang++
+CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17
 SRCS = $(shell find src -name '*.cpp')
 OBJS = $(SRCS:src/%.cpp=build/%.o)
