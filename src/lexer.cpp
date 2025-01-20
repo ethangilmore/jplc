@@ -32,11 +32,11 @@ const std::unordered_map<std::string, Token::Type> Lexer::punctuations{
     {"=", Token::Type::Equals},  {".", Token::Type::Dot}};
 
 const std::unordered_set<std::string> Lexer::operators = {
-    "+", "-", "*", "/", "==", "!=", "<", ">", "<=", ">=", "="};
+    "+", "-", "*", "/", "<", ">", "%", "!", "&&", "==", "!=", "<=", ">="};
 
 const std::vector<std::optional<Token> (Lexer::*)()> Lexer::lexemes = {
-    &Lexer::lex_whitespace, &Lexer::lex_newline, &Lexer::lex_punctuation,
-    &Lexer::lex_operator,   &Lexer::lex_number,  &Lexer::lex_keyword,
+    &Lexer::lex_whitespace, &Lexer::lex_newline,     &Lexer::lex_operator,
+    &Lexer::lex_number,     &Lexer::lex_punctuation, &Lexer::lex_keyword,
     &Lexer::lex_identifier, &Lexer::lex_string};
 
 Lexer::Lexer(std::istream &stream) : stream(stream) {}
@@ -59,16 +59,21 @@ Token Lexer::next() {
 }
 
 std::optional<Token> Lexer::lex_whitespace() {
+  std::optional<Token> token = std::nullopt;
   while (true) {
+    bool consume = false;
     int start = stream.tellg();
     int c = stream.get();
     if (c == ' ') { // whitespace
       continue;
+    } else if (c == '\n') {
+      token = Token{Token::Type::NewLine, start};
+      consume = true;
     } else if (c == '\\' && stream.peek() == '\n') { // escaped newline
       stream.ignore();
     } else if (c == '/' && stream.peek() == '/') { // line comment
-      while (stream.get() != '\n') {
-        // stream.ignore(); // TODO: handle EOF
+      while (stream.peek() != '\n') {
+        stream.ignore(); // TODO: handle EOF
       }
     } else if (c == '/' && stream.peek() == '*') { // block comment
       stream.ignore();
@@ -77,7 +82,7 @@ std::optional<Token> Lexer::lex_whitespace() {
           exit(1);
         }
         char c = stream.get();
-        if (c < 32 || c > 126) {
+        if ((c < 32 || c > 126) && c != '\n') {
           std::cout << "Compilation failed" << std::endl;
           exit(1);
         }
@@ -89,46 +94,12 @@ std::optional<Token> Lexer::lex_whitespace() {
         }
       }
     } else {
-      stream.seekg(start);
-      return std::nullopt;
+      if (!consume) {
+        stream.seekg(start);
+      }
+      return token;
     }
   }
-  return std::nullopt;
-}
-
-std::optional<Token> Lexer::lex_comment() {
-  int start = stream.tellg();
-
-  if (stream.get() != '/') {
-    stream.seekg(start);
-    return std::nullopt;
-  }
-
-  switch (stream.get()) {
-  case '/': // line comment
-    while (stream.peek() != '\n') {
-      stream.ignore(); // TODO: handle EOF
-    }
-    break;
-  case '*': // block comment
-    while (true) {
-      char c = stream.get();
-      if (c < 32 || c > 126) {
-        std::cout << "Compilation failed" << std::endl;
-        exit(1);
-      }
-      if (c != '*') {
-        continue;
-      }
-      if (stream.get() == '/') {
-        break;
-      }
-    }
-    break;
-  default: // not a comment
-    stream.seekg(start);
-  }
-
   return std::nullopt;
 }
 
@@ -196,7 +167,7 @@ std::optional<Token> Lexer::lex_newline() {
 std::optional<Token> Lexer::lex_keyword() {
   int start = stream.tellg();
   std::string value = "";
-  while (std::isalpha(stream.peek())) {
+  while (std::isalnum(stream.peek()) || stream.peek() == '_') {
     value += stream.get();
   }
   if (keywords.count(value)) {
@@ -223,21 +194,23 @@ std::optional<Token> Lexer::lex_identifier() {
 }
 
 std::optional<Token> Lexer::lex_number() {
-  if (!std::isdigit(stream.peek())) {
-    return std::nullopt;
-  }
-
   int start = stream.tellg();
-  std::string value;
+  std::string pre, post;
   while (std::isdigit(stream.peek())) {
-    value += stream.get();
+    pre += stream.get();
   }
-  if (stream.peek() != '.') {
-    return Token{Token::Type::IntVal, start, value};
+  if (stream.peek() == '.') {
+    post += stream.get();
+    while (std::isdigit(stream.peek())) {
+      post += stream.get();
+    }
+    if (pre.empty() && post.size() == 1) {
+      stream.seekg(start);
+      return std::nullopt;
+    }
+    return Token{Token::Type::FloatVal, start, pre + post};
+  } else if (pre.size() > 0) {
+    return Token{Token::Type::IntVal, start, pre};
   }
-  value += stream.get();
-  while (std::isdigit(stream.peek())) {
-    value += stream.get();
-  }
-  return Token(Token::Type::FloatVal, start, value);
+  return std::nullopt;
 }
