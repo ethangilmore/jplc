@@ -29,7 +29,7 @@ const std::unordered_map<std::string, Token::Type> Lexer::punctuations{
     {"}", Token::Type::RCurly},  {"(", Token::Type::LParen},
     {")", Token::Type::RParen},  {",", Token::Type::Comma},
     {"[", Token::Type::LSquare}, {"]", Token::Type::RSquare},
-    {"=", Token::Type::Equals}};
+    {"=", Token::Type::Equals},  {".", Token::Type::Dot}};
 
 const std::unordered_set<std::string> Lexer::operators = {
     "+", "-", "*", "/", "==", "!=", "<", ">", "<=", ">=", "="};
@@ -51,7 +51,7 @@ Token Lexer::next() {
     }
   }
 
-  if (stream.eof()) {
+  if (stream.peek() == EOF || stream.eof()) {
     return Token(Token::Type::Eof, stream.tellg());
   }
   std::cout << "Compilation failed" << std::endl;
@@ -74,10 +74,14 @@ std::optional<Token> Lexer::lex_whitespace() {
       stream.ignore();
       while (true) {
         if (stream.eof()) {
+          exit(1);
+        }
+        char c = stream.get();
+        if (c < 32 || c > 126) {
           std::cout << "Compilation failed" << std::endl;
           exit(1);
         }
-        if (stream.get() != '*') {
+        if (c != '*') {
           continue;
         }
         if (stream.get() == '/') {
@@ -108,7 +112,12 @@ std::optional<Token> Lexer::lex_comment() {
     break;
   case '*': // block comment
     while (true) {
-      if (stream.get() != '*') {
+      char c = stream.get();
+      if (c < 32 || c > 126) {
+        std::cout << "Compilation failed" << std::endl;
+        exit(1);
+      }
+      if (c != '*') {
         continue;
       }
       if (stream.get() == '/') {
@@ -186,7 +195,7 @@ std::optional<Token> Lexer::lex_newline() {
 
 std::optional<Token> Lexer::lex_keyword() {
   int start = stream.tellg();
-  std::string value;
+  std::string value = "";
   while (std::isalpha(stream.peek())) {
     value += stream.get();
   }

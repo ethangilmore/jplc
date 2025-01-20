@@ -26,11 +26,11 @@ int main(int argc, char *argv[]) {
 
   std::ifstream input(options.input);
   Lexer lexer(input);
-  while (!lexer.eof()) {
-    Token token = lexer.next();
+  Token token = lexer.next();
+  std::cout << token.toString() << std::endl;
+  while (token.type != Token::Type::Eof) {
+    token = lexer.next();
     std::cout << token.toString() << std::endl;
   }
-  Token token = Token(Token::Type::Eof, input.tellg());
-  std::cout << token.toString() << std::endl;
   std::cout << "Compilation succeeded" << std::endl;
 }
