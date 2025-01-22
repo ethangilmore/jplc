@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 class Token {
@@ -48,11 +49,11 @@ public:
   };
 
   Type type;
-  int start;
+  int64_t start;
   std::string value;
 
-  Token(Type type, int start, char value);
-  Token(Type type, int start, std::string value = "");
+  Token(Type type, int64_t start, char value);
+  Token(Type type, int64_t start, std::string value = "");
 
   std::string toString();
 };

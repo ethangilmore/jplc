@@ -35,13 +35,11 @@ const std::unordered_set<std::string> Lexer::operators = {
     "+", "-", "*", "/", "<", ">", "%", "!", "&&", "==", "!=", "<=", ">="};
 
 const std::vector<std::optional<Token> (Lexer::*)()> Lexer::lexemes = {
-    &Lexer::lex_whitespace, &Lexer::lex_newline,     &Lexer::lex_operator,
-    &Lexer::lex_number,     &Lexer::lex_punctuation, &Lexer::lex_keyword,
-    &Lexer::lex_identifier, &Lexer::lex_string};
+    &Lexer::lex_whitespace, &Lexer::lex_newline,    &Lexer::lex_operator,
+    &Lexer::lex_string,     &Lexer::lex_number,     &Lexer::lex_punctuation,
+    &Lexer::lex_keyword,    &Lexer::lex_identifier, &Lexer::lex_eof};
 
 Lexer::Lexer(std::istream &stream) : stream(stream) {}
-
-bool Lexer::eof() { return stream.eof(); }
 
 Token Lexer::next() {
   for (auto lexeme : lexemes) {
@@ -49,10 +47,6 @@ Token Lexer::next() {
     if (token.has_value()) {
       return token.value();
     }
-  }
-
-  if (stream.peek() == EOF || stream.eof()) {
-    return Token(Token::Type::Eof, stream.tellg());
   }
   std::cout << "Compilation failed" << std::endl;
   exit(1);
@@ -62,8 +56,8 @@ std::optional<Token> Lexer::lex_whitespace() {
   std::optional<Token> token = std::nullopt;
   while (true) {
     bool consume = false;
-    int start = stream.tellg();
-    int c = stream.get();
+    int64_t start = stream.tellg();
+    char c = stream.get();
     if (c == ' ') { // whitespace
       continue;
     } else if (c == '\n') {
@@ -79,6 +73,7 @@ std::optional<Token> Lexer::lex_whitespace() {
       stream.ignore();
       while (true) {
         if (stream.eof()) {
+          // TODO: handle EOF
           exit(1);
         }
         char c = stream.get();
@@ -103,18 +98,47 @@ std::optional<Token> Lexer::lex_whitespace() {
   return std::nullopt;
 }
 
-std::optional<Token> Lexer::lex_punctuation() {
-  int start = stream.tellg();
-  std::string value = std::string(1, stream.get());
-  if (punctuations.count(value)) {
-    return Token{punctuations.at(value), start, value};
+std::optional<Token> Lexer::lex_newline() {
+  int64_t start = stream.tellg();
+  if (stream.peek() == '\n') {
+    while (stream.peek() == '\n') {
+      stream.ignore();
+    }
+    return Token{Token::Type::NewLine, start};
+  }
+  return std::nullopt;
+  // switch (stream.get()) {
+  // case '\n':
+  //   while (stream.peek() == '\n') {
+  //     stream.ignore();
+  //   }
+  //   return Token{Token::Type::NewLine, start};
+  // case '\\':
+  //   if (stream.get() == '\n') {
+  //     return std::nullopt;
+  //   }
+  // default:
+  //   stream.seekg(start);
+  //   return std::nullopt;
+  // }
+}
+
+std::optional<Token> Lexer::lex_operator() {
+  char buffer[2];
+  int64_t start = stream.tellg();
+  stream.read(buffer, 2);
+  for (int len : {2, 1}) { // try 2-character operator first
+    if (operators.count(std::string(buffer, len))) {
+      stream.seekg(start + len);
+      return Token{Token::Type::Op, start, std::string(buffer, len)};
+    }
   }
   stream.seekg(start);
   return std::nullopt;
 }
 
 std::optional<Token> Lexer::lex_string() {
-  int start = stream.tellg();
+  int64_t start = stream.tellg();
   std::string value = "";
   if (stream.peek() != '"') {
     return std::nullopt;
@@ -132,69 +156,8 @@ std::optional<Token> Lexer::lex_string() {
   return Token{Token::Type::String, start, value};
 }
 
-std::optional<Token> Lexer::lex_operator() {
-  char buffer[2];
-  int start = stream.tellg();
-  stream.read(buffer, 2);
-  for (int len : {2, 1}) { // try 2-character operator first
-    if (operators.count(std::string(buffer, len))) {
-      stream.seekg(start + len);
-      return Token{Token::Type::Op, start, std::string(buffer, len)};
-    }
-  }
-  stream.seekg(start);
-  return std::nullopt;
-}
-
-std::optional<Token> Lexer::lex_newline() {
-  int start = stream.tellg();
-  switch (stream.get()) {
-  case '\n':
-    while (stream.peek() == '\n') {
-      stream.ignore();
-    }
-    return Token{Token::Type::NewLine, start};
-  case '\\':
-    if (stream.get() == '\n') {
-      return std::nullopt;
-    }
-  default:
-    stream.seekg(start);
-    return std::nullopt;
-  }
-}
-
-std::optional<Token> Lexer::lex_keyword() {
-  int start = stream.tellg();
-  std::string value = "";
-  while (std::isalnum(stream.peek()) || stream.peek() == '_') {
-    value += stream.get();
-  }
-  if (keywords.count(value)) {
-    return Token{keywords.at(value), start, value};
-  }
-  stream.seekg(start);
-  return std::nullopt;
-}
-
-std::optional<Token> Lexer::lex_identifier() {
-  if (!std::isalpha(stream.peek()) && stream.peek() != '_') {
-    return std::nullopt;
-  }
-
-  int start = stream.tellg();
-  std::string value;
-  while (std::isalnum(stream.peek()) || stream.peek() == '_') {
-    value += stream.get();
-  }
-  if (value.empty()) {
-    return std::nullopt;
-  }
-  return Token{Token::Type::Variable, start, value};
-}
-
 std::optional<Token> Lexer::lex_number() {
-  int start = stream.tellg();
+  int64_t start = stream.tellg();
   std::string pre, post;
   while (std::isdigit(stream.peek())) {
     pre += stream.get();
@@ -211,6 +174,52 @@ std::optional<Token> Lexer::lex_number() {
     return Token{Token::Type::FloatVal, start, pre + post};
   } else if (pre.size() > 0) {
     return Token{Token::Type::IntVal, start, pre};
+  }
+  return std::nullopt;
+}
+
+std::optional<Token> Lexer::lex_punctuation() {
+  int64_t start = stream.tellg();
+  std::string value = std::string(1, stream.get());
+  if (punctuations.count(value)) {
+    return Token{punctuations.at(value), start, value};
+  }
+  stream.seekg(start);
+  return std::nullopt;
+}
+
+std::optional<Token> Lexer::lex_keyword() {
+  int64_t start = stream.tellg();
+  std::string value = "";
+  while (std::isalnum(stream.peek()) || stream.peek() == '_') {
+    value += stream.get();
+  }
+  if (keywords.count(value)) {
+    return Token{keywords.at(value), start, value};
+  }
+  stream.seekg(start);
+  return std::nullopt;
+}
+
+std::optional<Token> Lexer::lex_identifier() {
+  if (!std::isalpha(stream.peek()) && stream.peek() != '_') {
+    return std::nullopt;
+  }
+
+  int64_t start = stream.tellg();
+  std::string value;
+  while (std::isalnum(stream.peek()) || stream.peek() == '_') {
+    value += stream.get();
+  }
+  if (value.empty()) {
+    return std::nullopt;
+  }
+  return Token{Token::Type::Variable, start, value};
+}
+
+std::optional<Token> Lexer::lex_eof() {
+  if (stream.peek() == EOF || stream.eof()) {
+    return Token{Token::Type::Eof, stream.tellg()};
   }
   return std::nullopt;
 }

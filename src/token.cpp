@@ -1,9 +1,9 @@
 #include "token.h"
 
-Token::Token(Type type, int start, std::string value)
+Token::Token(Type type, int64_t start, std::string value)
     : type(type), start(start), value(value) {}
 
-Token::Token(Type type, int start, char value)
+Token::Token(Type type, int64_t start, char value)
     : type(type), start(start), value(std::string(1, value)) {}
 
 std::string Token::toString() {
