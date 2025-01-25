@@ -55,5 +55,5 @@ public:
   Token(Type type, int64_t start, char value);
   Token(Type type, int64_t start, std::string value = "");
 
-  std::string toString();
+  std::string to_string() const;
 };

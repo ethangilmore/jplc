@@ -1,4 +1,6 @@
 #include "lexer.h"
+#include "parser.h"
+#include "printervisitor.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -11,6 +13,8 @@ struct Options {
 };
 
 int main(int argc, char *argv[]) {
+  // std::cout << "Hello, World!" << std::endl;
+  // exit(0);
   std::vector<std::string> args(argv + 1, argv + argc);
   Options options = {
       .input = args[0],
@@ -26,11 +30,22 @@ int main(int argc, char *argv[]) {
 
   std::ifstream input(options.input);
   Lexer lexer(input);
-  Token token = lexer.next();
-  std::cout << token.toString() << std::endl;
-  while (token.type != Token::Type::Eof) {
-    token = lexer.next();
-    std::cout << token.toString() << std::endl;
+  if (options.lex) {
+    Token token = lexer.next();
+    std::cout << token.to_string() << std::endl;
+    while (token.type != Token::Type::Eof) {
+      token = lexer.next();
+      std::cout << token.to_string() << std::endl;
+    }
+    std::cout << "Compilation succeeded" << std::endl;
+    exit(0);
   }
-  std::cout << "Compilation succeeded" << std::endl;
+  Parser parser(lexer);
+  if (options.parse) {
+    std::unique_ptr<ASTNode> node = parser.parse();
+    PrinterVisitor visitor;
+    node->accept(visitor);
+    std::cout << "\nCompilation succeeded" << std::endl;
+    exit(0);
+  }
 }

@@ -6,7 +6,7 @@ Token::Token(Type type, int64_t start, std::string value)
 Token::Token(Type type, int64_t start, char value)
     : type(type), start(start), value(std::string(1, value)) {}
 
-std::string Token::toString() {
+std::string Token::to_string() const {
   switch (type) {
   case Type::Array:
     return "ARRAY '" + value + "'";

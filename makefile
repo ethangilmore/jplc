@@ -1,9 +1,10 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17
+CXXFLAGS = -Wall -Wextra -Wno-unused-parameter -std=c++17
 SRCS = $(shell find src -name '*.cpp')
 OBJS = $(SRCS:src/%.cpp=build/%.o)
 EXEC = build/jpl
 TEST = test.jpl
+FLAGS = ""
 
 all: run
 
@@ -17,7 +18,7 @@ build/%.o: src/%.cpp
 compile: $(EXEC)
 
 run: $(EXEC)
-	./$(EXEC) $(TEST)
+	./$(EXEC) $(TEST) $(FLAGS)
 
 clean:
 	rm -rf build
