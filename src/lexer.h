@@ -2,6 +2,7 @@
 
 #include "logger.h"
 #include "token.h"
+#include <cstdint>
 #include <istream>
 #include <optional>
 #include <regex>
