@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include "logger.h"
 #include "parser.h"
 #include "printervisitor.h"
 #include <fstream>
@@ -29,7 +30,8 @@ int main(int argc, char *argv[]) {
   }
 
   std::ifstream input(options.input);
-  Lexer lexer(input);
+  Logger logger(options.input);
+  Lexer lexer(input, logger);
   if (options.lex) {
     Token token = lexer.next();
     std::cout << token.to_string() << std::endl;
@@ -40,7 +42,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Compilation succeeded" << std::endl;
     exit(0);
   }
-  Parser parser(lexer);
+  Parser parser(lexer, logger);
   if (options.parse) {
     std::unique_ptr<ASTNode> node = parser.parse();
     PrinterVisitor visitor;

@@ -39,7 +39,8 @@ const std::vector<std::optional<Token> (Lexer::*)()> Lexer::lexemes = {
     &Lexer::lex_string,     &Lexer::lex_number,     &Lexer::lex_punctuation,
     &Lexer::lex_keyword,    &Lexer::lex_identifier, &Lexer::lex_eof};
 
-Lexer::Lexer(std::istream &stream) : stream(stream) {}
+Lexer::Lexer(std::istream &stream, Logger &logger)
+    : stream(stream), logger(logger) {}
 
 Token Lexer::next() {
   for (auto lexeme : lexemes) {
@@ -48,8 +49,7 @@ Token Lexer::next() {
       return token.value();
     }
   }
-  std::cout << "Compilation failed" << std::endl;
-  exit(1);
+  logger.log_error("Unexpected character", stream.tellg());
 }
 
 std::optional<Token> Lexer::lex_whitespace() {
@@ -73,13 +73,11 @@ std::optional<Token> Lexer::lex_whitespace() {
       stream.ignore();
       while (true) {
         if (stream.eof()) {
-          // TODO: handle EOF
-          exit(1);
+          logger.log_error("Unterminated block comment", start);
         }
         char c = stream.get();
         if ((c < 32 || c > 126) && c != '\n') {
-          std::cout << "Compilation failed" << std::endl;
-          exit(1);
+          logger.log_error("Invalid character in block comment", start);
         }
         if (c != '*') {
           continue;
@@ -107,20 +105,6 @@ std::optional<Token> Lexer::lex_newline() {
     return Token{Token::Type::NewLine, start};
   }
   return std::nullopt;
-  // switch (stream.get()) {
-  // case '\n':
-  //   while (stream.peek() == '\n') {
-  //     stream.ignore();
-  //   }
-  //   return Token{Token::Type::NewLine, start};
-  // case '\\':
-  //   if (stream.get() == '\n') {
-  //     return std::nullopt;
-  //   }
-  // default:
-  //   stream.seekg(start);
-  //   return std::nullopt;
-  // }
 }
 
 std::optional<Token> Lexer::lex_operator() {
@@ -146,9 +130,10 @@ std::optional<Token> Lexer::lex_string() {
   value += stream.get();
   while (stream.peek() != '"') {
     char c = stream.get();
-    if (c < 32 || c > 126 || stream.eof()) {
-      std::cout << "Compilation failed" << std::endl;
-      exit(1);
+    if (c < 32 || c > 126) {
+      logger.log_error("Invalid character in string", start);
+    } else if (stream.eof()) {
+      logger.log_error("Unterminated string", start);
     }
     value += c;
   }

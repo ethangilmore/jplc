@@ -1,5 +1,6 @@
 #pragma once
 
+#include "logger.h"
 #include "token.h"
 #include <istream>
 #include <optional>
@@ -10,7 +11,7 @@
 
 class Lexer {
 public:
-  Lexer(std::istream &stream);
+  Lexer(std::istream &stream, Logger &logger);
   Token next();
   Token peek();
 
@@ -31,4 +32,5 @@ private:
   static const std::vector<std::optional<Token> (Lexer::*)()> lexemes;
 
   std::istream &stream;
+  Logger &logger;
 };

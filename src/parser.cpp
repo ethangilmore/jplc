@@ -4,13 +4,12 @@
 #include <stdexcept>
 #include <vector>
 
-Parser::Parser(Lexer &lexer) : lexer(lexer) {}
+Parser::Parser(Lexer &lexer, Logger &logger) : lexer(lexer), logger(logger) {}
 
 Token Parser::consume(Token::Type type) {
   Token token = lexer.next();
   if (token.type != type) {
-    std::cout << "Compilation failed" << std::endl;
-    exit(1);
+    logger.log_error("Unexpected token: " + token.value, token.start);
   }
   return token;
 }
@@ -18,8 +17,7 @@ Token Parser::consume(Token::Type type) {
 Token Parser::consume(Token::Type type, const std::string &value) {
   Token token = lexer.next();
   if (token.type != type || token.value != value) {
-    std::cout << "Compilation failed" << std::endl;
-    exit(1);
+    logger.log_error("Unexpected token: " + token.value, token.start);
   }
   return token;
 }
@@ -56,8 +54,7 @@ std::unique_ptr<Cmd> Parser::parse_cmd(Token token) {
   case Token::Type::Time:
     return parse_time_cmd(token);
   default:
-    std::cout << "Compilation failed" << std::endl;
-    exit(1);
+    logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
@@ -66,8 +63,7 @@ std::unique_ptr<LValue> Parser::parse_lvalue(Token token) {
   case Token::Type::Variable:
     return parse_var_lvalue(token);
   default:
-    std::cout << "Compilation failed" << std::endl;
-    exit(1);
+    logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
@@ -86,8 +82,7 @@ std::unique_ptr<Expr> Parser::parse_expr(Token token) {
   case Token::Type::LSquare:
     return parse_array_literal_expr(token);
   default:
-    std::cout << "Compilation failed" << std::endl;
-    exit(1);
+    logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
@@ -140,8 +135,8 @@ std::unique_ptr<IntExpr> Parser::parse_int_expr(Token token) {
   try {
     return std::make_unique<IntExpr>(std::stoll(token.value));
   } catch (std::out_of_range) {
-    std::cout << "Compilation failed" << std::endl;
-    exit(1);
+    logger.log_error("Integer literal out of range: " + token.value,
+                     token.start);
   }
 }
 
@@ -149,8 +144,7 @@ std::unique_ptr<FloatExpr> Parser::parse_float_expr(Token token) {
   try {
     return std::make_unique<FloatExpr>(std::stod(token.value));
   } catch (std::out_of_range) {
-    std::cout << "Compilation failed" << std::endl;
-    exit(1);
+    logger.log_error("Float literal out of range: " + token.value, token.start);
   }
 }
 
@@ -179,7 +173,7 @@ Parser::parse_array_literal_expr(Token token) {
     if (next.type == Token::Type::RSquare) {
       return std::make_unique<ArrayLiteralExpr>(std::move(elements));
     } else if (next.type != Token::Type::Comma) {
-      exit(1);
+      logger.log_error("Unexpected token: " + next.value, next.start);
     }
   }
 }
