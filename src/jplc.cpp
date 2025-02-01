@@ -1,10 +1,10 @@
+#include <fstream>
+#include <iostream>
+#include <vector>
 #include "lexer.h"
 #include "logger.h"
 #include "parser.h"
 #include "printervisitor.h"
-#include <fstream>
-#include <iostream>
-#include <vector>
 
 struct Options {
   std::string input;
@@ -13,7 +13,7 @@ struct Options {
   bool typecheck;
 };
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   // std::cout << "Hello, World!" << std::endl;
   // exit(0);
   std::vector<std::string> args(argv + 1, argv + argc);

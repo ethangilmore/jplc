@@ -4,7 +4,7 @@
 #include <string>
 
 class Token {
-public:
+ public:
   enum class Type {
     Array,
     Assert,

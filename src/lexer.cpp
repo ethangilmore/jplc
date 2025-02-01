@@ -1,5 +1,4 @@
 #include "lexer.h"
-#include "token.h"
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
@@ -8,6 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "token.h"
 
 const std::unordered_map<std::string, Token::Type> Lexer::keywords{
     {"array", Token::Type::Array}, {"assert", Token::Type::Assert},
@@ -39,7 +39,7 @@ const std::vector<std::optional<Token> (Lexer::*)()> Lexer::lexemes = {
     &Lexer::lex_string,     &Lexer::lex_number,     &Lexer::lex_punctuation,
     &Lexer::lex_keyword,    &Lexer::lex_identifier, &Lexer::lex_eof};
 
-Lexer::Lexer(std::istream &stream, Logger &logger)
+Lexer::Lexer(std::istream& stream, Logger& logger)
     : stream(stream), logger(logger) {}
 
 Token Lexer::next() {
@@ -58,18 +58,18 @@ std::optional<Token> Lexer::lex_whitespace() {
     bool consume = false;
     int64_t start = stream.tellg();
     char c = stream.get();
-    if (c == ' ') { // whitespace
+    if (c == ' ') {  // whitespace
       continue;
     } else if (c == '\n') {
       token = Token{Token::Type::NewLine, start};
       consume = true;
-    } else if (c == '\\' && stream.peek() == '\n') { // escaped newline
+    } else if (c == '\\' && stream.peek() == '\n') {  // escaped newline
       stream.ignore();
-    } else if (c == '/' && stream.peek() == '/') { // line comment
+    } else if (c == '/' && stream.peek() == '/') {  // line comment
       while (stream.peek() != '\n') {
-        stream.ignore(); // TODO: handle EOF
+        stream.ignore();  // TODO: handle EOF
       }
-    } else if (c == '/' && stream.peek() == '*') { // block comment
+    } else if (c == '/' && stream.peek() == '*') {  // block comment
       stream.ignore();
       while (true) {
         if (stream.eof()) {
@@ -111,7 +111,7 @@ std::optional<Token> Lexer::lex_operator() {
   char buffer[2];
   int64_t start = stream.tellg();
   stream.read(buffer, 2);
-  for (int len : {2, 1}) { // try 2-character operator first
+  for (int len : {2, 1}) {  // try 2-character operator first
     if (operators.count(std::string(buffer, len))) {
       stream.seekg(start + len);
       return Token{Token::Type::Op, start, std::string(buffer, len)};

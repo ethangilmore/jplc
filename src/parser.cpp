@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
-Parser::Parser(Lexer &lexer, Logger &logger) : lexer(lexer), logger(logger) {}
+Parser::Parser(Lexer& lexer, Logger& logger) : lexer(lexer), logger(logger) {}
 
 Token Parser::consume(Token::Type type) {
   Token token = lexer.next();
@@ -13,7 +13,7 @@ Token Parser::consume(Token::Type type) {
   return token;
 }
 
-Token Parser::consume(Token::Type type, const std::string &value) {
+Token Parser::consume(Token::Type type, const std::string& value) {
   Token token = lexer.next();
   if (token.type != type || token.value != value) {
     logger.log_error("Unexpected token: " + token.value, token.start);
@@ -38,50 +38,50 @@ std::unique_ptr<Program> Parser::parse() {
 
 std::unique_ptr<Cmd> Parser::parse_cmd(Token token) {
   switch (token.type) {
-  case Token::Type::Read:
-    return parse_read_cmd(token);
-  case Token::Type::Write:
-    return parse_write_cmd(token);
-  case Token::Type::Let:
-    return parse_let_cmd(token);
-  case Token::Type::Assert:
-    return parse_assert_cmd(token);
-  case Token::Type::Print:
-    return parse_print_cmd(token);
-  case Token::Type::Show:
-    return parse_show_cmd(token);
-  case Token::Type::Time:
-    return parse_time_cmd(token);
-  default:
-    logger.log_error("Unexpected token: " + token.value, token.start);
+    case Token::Type::Read:
+      return parse_read_cmd(token);
+    case Token::Type::Write:
+      return parse_write_cmd(token);
+    case Token::Type::Let:
+      return parse_let_cmd(token);
+    case Token::Type::Assert:
+      return parse_assert_cmd(token);
+    case Token::Type::Print:
+      return parse_print_cmd(token);
+    case Token::Type::Show:
+      return parse_show_cmd(token);
+    case Token::Type::Time:
+      return parse_time_cmd(token);
+    default:
+      logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
 std::unique_ptr<LValue> Parser::parse_lvalue(Token token) {
   switch (token.type) {
-  case Token::Type::Variable:
-    return parse_var_lvalue(token);
-  default:
-    logger.log_error("Unexpected token: " + token.value, token.start);
+    case Token::Type::Variable:
+      return parse_var_lvalue(token);
+    default:
+      logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
 std::unique_ptr<Expr> Parser::parse_expr(Token token) {
   switch (token.type) {
-  case Token::Type::IntVal:
-    return parse_int_expr(token);
-  case Token::Type::FloatVal:
-    return parse_float_expr(token);
-  case Token::Type::True:
-    return parse_true_expr(token);
-  case Token::Type::False:
-    return parse_false_expr(token);
-  case Token::Type::Variable:
-    return parse_var_expr(token);
-  case Token::Type::LSquare:
-    return parse_array_literal_expr(token);
-  default:
-    logger.log_error("Unexpected token: " + token.value, token.start);
+    case Token::Type::IntVal:
+      return parse_int_expr(token);
+    case Token::Type::FloatVal:
+      return parse_float_expr(token);
+    case Token::Type::True:
+      return parse_true_expr(token);
+    case Token::Type::False:
+      return parse_false_expr(token);
+    case Token::Type::Variable:
+      return parse_var_expr(token);
+    case Token::Type::LSquare:
+      return parse_array_literal_expr(token);
+    default:
+      logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
@@ -159,8 +159,8 @@ std::unique_ptr<VarExpr> Parser::parse_var_expr(Token token) {
   return std::make_unique<VarExpr>(std::move(token.value));
 }
 
-std::unique_ptr<ArrayLiteralExpr>
-Parser::parse_array_literal_expr(Token token) {
+std::unique_ptr<ArrayLiteralExpr> Parser::parse_array_literal_expr(
+    Token token) {
   std::vector<std::unique_ptr<Expr>> elements;
   while (true) {
     Token next = lexer.next();

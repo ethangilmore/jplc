@@ -1,15 +1,15 @@
 #pragma once
 
+#include <memory>
 #include "astnodes.h"
 #include "lexer.h"
 #include "logger.h"
-#include <memory>
 
 class Parser {
-public:
-  Parser(Lexer &lexer, Logger &logger);
+ public:
+  Parser(Lexer& lexer, Logger& logger);
   Token consume(Token::Type type);
-  Token consume(Token::Type type, const std::string &value);
+  Token consume(Token::Type type, const std::string& value);
   std::unique_ptr<Program> parse();
   std::unique_ptr<Cmd> parse_cmd(Token token);
   std::unique_ptr<Expr> parse_expr(Token token);
@@ -29,7 +29,7 @@ public:
   std::unique_ptr<ArrayLiteralExpr> parse_array_literal_expr(Token token);
   std::unique_ptr<VarLValue> parse_var_lvalue(Token token);
 
-private:
-  Logger &logger;
-  Lexer &lexer;
+ private:
+  Logger& logger;
+  Lexer& lexer;
 };
