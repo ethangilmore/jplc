@@ -34,4 +34,5 @@ class Lexer {
 
   std::istream& stream;
   Logger& logger;
+  std::optional<Token> peeked;
 };

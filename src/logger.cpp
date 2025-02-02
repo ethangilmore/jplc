@@ -9,7 +9,7 @@ Logger::~Logger() {
   file.close();
 }
 
-void Logger::log_error(std::string message, uint64_t position) {
+[[noreturn]] void Logger::log_error(std::string message, uint64_t position) {
   auto [line, col] = get_line_col(position);
   std::cout << "Compilation failed: " << filename << "[" << line << ":" << col
             << "]: " << message << std::endl;

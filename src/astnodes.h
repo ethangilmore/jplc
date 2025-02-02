@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "astvisitor.h"
 
@@ -150,9 +151,9 @@ class FnCmd : public Cmd {
 class StructCmd : public Cmd {
  public:
   std::string identifier;
-  std::unordered_map<std::string, std::unique_ptr<Type>> fields;
+  std::vector<std::pair<std::string, std::unique_ptr<Type>>> fields;
   StructCmd(std::string identifier,
-            std::unordered_map<std::string, std::unique_ptr<Type>> fields)
+            std::vector<std::pair<std::string, std::unique_ptr<Type>>> fields)
       : identifier(std::move(identifier)), fields(std::move(fields)) {}
   void accept(ASTVisitor& visitor) override { visitor.visit(*this); }
 };

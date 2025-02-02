@@ -42,7 +42,19 @@ const std::vector<std::optional<Token> (Lexer::*)()> Lexer::lexemes = {
 Lexer::Lexer(std::istream& stream, Logger& logger)
     : stream(stream), logger(logger) {}
 
+Token Lexer::peek() {
+  if (!peeked.has_value()) {
+    peeked = next();
+  }
+  return peeked.value();
+}
+
 Token Lexer::next() {
+  if (peeked.has_value()) {
+    Token token = peeked.value();
+    peeked = std::nullopt;
+    return token;
+  }
   for (auto lexeme : lexemes) {
     auto token = (this->*lexeme)();
     if (token.has_value()) {
