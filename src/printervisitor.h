@@ -1,8 +1,10 @@
-#include "astvisitor.h"
 #include <iostream>
 
+#include "astnodes.h"
+#include "astvisitor.h"
+
 class PrinterVisitor : public ASTVisitor {
-public:
+ public:
   /* ========== Program ========== */
   void visit(const Program &node) override {
     for (const auto &cmd : node.cmds) {

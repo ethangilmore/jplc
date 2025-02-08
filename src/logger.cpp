@@ -1,13 +1,12 @@
 #include "logger.h"
+
 #include <iostream>
 
 Logger::Logger(std::string& filename) : filename(filename) {
   file.open(filename);
 }
 
-Logger::~Logger() {
-  file.close();
-}
+Logger::~Logger() { file.close(); }
 
 [[noreturn]] void Logger::log_error(std::string message, uint64_t position) {
   auto [line, col] = get_line_col(position);

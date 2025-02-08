@@ -1,4 +1,5 @@
 #include "lexer.h"
+
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
@@ -7,37 +8,59 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "token.h"
 
 const std::unordered_map<std::string, Token::Type> Lexer::keywords{
-    {"array", Token::Type::Array}, {"assert", Token::Type::Assert},
-    {"bool", Token::Type::Bool},   {"else", Token::Type::Else},
-    {"false", Token::Type::False}, {"float", Token::Type::Float},
-    {"fn", Token::Type::Fn},       {"if", Token::Type::If},
-    {"image", Token::Type::Image}, {"int", Token::Type::Int},
-    {"let", Token::Type::Let},     {"print", Token::Type::Print},
-    {"read", Token::Type::Read},   {"return", Token::Type::Return},
-    {"show", Token::Type::Show},   {"struct", Token::Type::Struct},
-    {"sum", Token::Type::Sum},     {"then", Token::Type::Then},
-    {"time", Token::Type::Time},   {"to", Token::Type::To},
-    {"true", Token::Type::True},   {"void", Token::Type::Void},
+    {"array", Token::Type::Array},
+    {"assert", Token::Type::Assert},
+    {"bool", Token::Type::Bool},
+    {"else", Token::Type::Else},
+    {"false", Token::Type::False},
+    {"float", Token::Type::Float},
+    {"fn", Token::Type::Fn},
+    {"if", Token::Type::If},
+    {"image", Token::Type::Image},
+    {"int", Token::Type::Int},
+    {"let", Token::Type::Let},
+    {"print", Token::Type::Print},
+    {"read", Token::Type::Read},
+    {"return", Token::Type::Return},
+    {"show", Token::Type::Show},
+    {"struct", Token::Type::Struct},
+    {"sum", Token::Type::Sum},
+    {"then", Token::Type::Then},
+    {"time", Token::Type::Time},
+    {"to", Token::Type::To},
+    {"true", Token::Type::True},
+    {"void", Token::Type::Void},
     {"write", Token::Type::Write},
 };
 
 const std::unordered_map<std::string, Token::Type> Lexer::punctuations{
-    {":", Token::Type::Colon},   {"{", Token::Type::LCurly},
-    {"}", Token::Type::RCurly},  {"(", Token::Type::LParen},
-    {")", Token::Type::RParen},  {",", Token::Type::Comma},
-    {"[", Token::Type::LSquare}, {"]", Token::Type::RSquare},
-    {"=", Token::Type::Equals},  {".", Token::Type::Dot}};
+    {":", Token::Type::Colon},
+    {"{", Token::Type::LCurly},
+    {"}", Token::Type::RCurly},
+    {"(", Token::Type::LParen},
+    {")", Token::Type::RParen},
+    {",", Token::Type::Comma},
+    {"[", Token::Type::LSquare},
+    {"]", Token::Type::RSquare},
+    {"=", Token::Type::Equals},
+    {".", Token::Type::Dot}};
 
-const std::unordered_set<std::string> Lexer::operators = {
-    "+", "-", "*", "/", "<", ">", "%", "!", "&&", "==", "!=", "<=", ">="};
+const std::unordered_set<std::string> Lexer::operators = {"+", "-", "*", "/", "<", ">", "%", "!", "&&", "==", "!=", "<=", ">="};
 
 const std::vector<std::optional<Token> (Lexer::*)()> Lexer::lexemes = {
-    &Lexer::lex_whitespace, &Lexer::lex_newline,    &Lexer::lex_operator,
-    &Lexer::lex_string,     &Lexer::lex_number,     &Lexer::lex_punctuation,
-    &Lexer::lex_keyword,    &Lexer::lex_identifier, &Lexer::lex_eof};
+    &Lexer::lex_whitespace,
+    &Lexer::lex_newline,
+    &Lexer::lex_operator,
+    &Lexer::lex_string,
+    &Lexer::lex_number,
+    &Lexer::lex_punctuation,
+    &Lexer::lex_keyword,
+    &Lexer::lex_identifier,
+    &Lexer::lex_eof};
 
 Lexer::Lexer(std::istream& stream, Logger& logger)
     : stream(stream), logger(logger) {}

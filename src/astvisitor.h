@@ -51,49 +51,49 @@ class Binding;
 class ASTVisitor {
  public:
   // Program
-  virtual void visit(const Program& node) = 0;
+  virtual void visit(const Program &node);
 
   // Types
-  virtual void visit(const IntType& node) = 0;
-  virtual void visit(const BoolType& node) = 0;
-  virtual void visit(const FloatType& node) = 0;
-  virtual void visit(const ArrayType& node) = 0;
-  virtual void visit(const StructType& node) = 0;
-  virtual void visit(const VoidType& node) = 0;
+  virtual void visit(const IntType &node);
+  virtual void visit(const BoolType &node);
+  virtual void visit(const FloatType &node);
+  virtual void visit(const ArrayType &node);
+  virtual void visit(const StructType &node);
+  virtual void visit(const VoidType &node);
 
   // Commands
-  virtual void visit(const ReadCmd& node) = 0;
-  virtual void visit(const WriteCmd& node) = 0;
-  virtual void visit(const LetCmd& node) = 0;
-  virtual void visit(const AssertCmd& node) = 0;
-  virtual void visit(const PrintCmd& node) = 0;
-  virtual void visit(const ShowCmd& node) = 0;
-  virtual void visit(const TimeCmd& node) = 0;
-  virtual void visit(const FnCmd& node) = 0;
-  virtual void visit(const StructCmd& node) = 0;
+  virtual void visit(const ReadCmd &node);
+  virtual void visit(const WriteCmd &node);
+  virtual void visit(const LetCmd &node);
+  virtual void visit(const AssertCmd &node);
+  virtual void visit(const PrintCmd &node);
+  virtual void visit(const ShowCmd &node);
+  virtual void visit(const TimeCmd &node);
+  virtual void visit(const FnCmd &node);
+  virtual void visit(const StructCmd &node);
 
   // Statements
-  virtual void visit(const LetStmt& node) = 0;
-  virtual void visit(const AssertStmt& node) = 0;
-  virtual void visit(const ReturnStmt& node) = 0;
+  virtual void visit(const LetStmt &node);
+  virtual void visit(const AssertStmt &node);
+  virtual void visit(const ReturnStmt &node);
 
   // Expressions
-  virtual void visit(const IntExpr& node) = 0;
-  virtual void visit(const FloatExpr& node) = 0;
-  virtual void visit(const TrueExpr& node) = 0;
-  virtual void visit(const FalseExpr& node) = 0;
-  virtual void visit(const VarExpr& node) = 0;
-  virtual void visit(const VoidExpr& node) = 0;
-  virtual void visit(const ArrayLiteralExpr& node) = 0;
-  virtual void visit(const StructLiteralExpr& node) = 0;
-  virtual void visit(const DotExpr& node) = 0;
-  virtual void visit(const ArrayIndexExpr& node) = 0;
-  virtual void visit(const CallExpr& node) = 0;
+  virtual void visit(const IntExpr &node);
+  virtual void visit(const FloatExpr &node);
+  virtual void visit(const TrueExpr &node);
+  virtual void visit(const FalseExpr &node);
+  virtual void visit(const VarExpr &node);
+  virtual void visit(const VoidExpr &node);
+  virtual void visit(const ArrayLiteralExpr &node);
+  virtual void visit(const StructLiteralExpr &node);
+  virtual void visit(const DotExpr &node);
+  virtual void visit(const ArrayIndexExpr &node);
+  virtual void visit(const CallExpr &node);
 
   // LValues
-  virtual void visit(const VarLValue& node) = 0;
-  virtual void visit(const ArrayLValue& node) = 0;
+  virtual void visit(const VarLValue &node);
+  virtual void visit(const ArrayLValue &node);
 
   // Bindings
-  virtual void visit(const Binding& node) = 0;
+  virtual void visit(const Binding &node);
 };

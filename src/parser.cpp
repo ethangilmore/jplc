@@ -1,4 +1,5 @@
 #include "parser.h"
+
 #include <cstdio>
 #include <iostream>
 #include <memory>
@@ -50,23 +51,23 @@ std::unique_ptr<Type> Parser::parse_type(Token token) {
 
 std::unique_ptr<Type> Parser::parse_base_type(Token token) {
   switch (token.type) {
-  case Token::Type::Int:
-    return std::make_unique<IntType>();
-  case Token::Type::Bool:
-    return std::make_unique<BoolType>();
-  case Token::Type::Float:
-    return std::make_unique<FloatType>();
-  case Token::Type::Variable:
-    return std::make_unique<StructType>(std::move(token.value));
-  case Token::Type::Void:
-    return std::make_unique<VoidType>();
-  default:
-    logger.log_error("Unexpected token: " + token.value, token.start);
+    case Token::Type::Int:
+      return std::make_unique<IntType>();
+    case Token::Type::Bool:
+      return std::make_unique<BoolType>();
+    case Token::Type::Float:
+      return std::make_unique<FloatType>();
+    case Token::Type::Variable:
+      return std::make_unique<StructType>(std::move(token.value));
+    case Token::Type::Void:
+      return std::make_unique<VoidType>();
+    default:
+      logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
-std::unique_ptr<Type>
-Parser::parse_array_type(std::unique_ptr<Type> base_type) {
+std::unique_ptr<Type> Parser::parse_array_type(
+    std::unique_ptr<Type> base_type) {
   consume(Token::Type::LSquare);
   size_t rank = 1;
   while (lexer.peek().type == Token::Type::Comma) {
@@ -80,26 +81,26 @@ Parser::parse_array_type(std::unique_ptr<Type> base_type) {
 /* ========== Cmd ========== */
 std::unique_ptr<Cmd> Parser::parse_cmd(Token token) {
   switch (token.type) {
-  case Token::Type::Read:
-    return parse_read_cmd(token);
-  case Token::Type::Write:
-    return parse_write_cmd(token);
-  case Token::Type::Let:
-    return parse_let_cmd(token);
-  case Token::Type::Assert:
-    return parse_assert_cmd(token);
-  case Token::Type::Print:
-    return parse_print_cmd(token);
-  case Token::Type::Show:
-    return parse_show_cmd(token);
-  case Token::Type::Time:
-    return parse_time_cmd(token);
-  case Token::Type::Fn:
-    return parse_fn_cmd(token);
-  case Token::Type::Struct:
-    return parse_struct_cmd(token);
-  default:
-    logger.log_error("Unexpected token: " + token.value, token.start);
+    case Token::Type::Read:
+      return parse_read_cmd(token);
+    case Token::Type::Write:
+      return parse_write_cmd(token);
+    case Token::Type::Let:
+      return parse_let_cmd(token);
+    case Token::Type::Assert:
+      return parse_assert_cmd(token);
+    case Token::Type::Print:
+      return parse_print_cmd(token);
+    case Token::Type::Show:
+      return parse_show_cmd(token);
+    case Token::Type::Time:
+      return parse_time_cmd(token);
+    case Token::Type::Fn:
+      return parse_fn_cmd(token);
+    case Token::Type::Struct:
+      return parse_struct_cmd(token);
+    default:
+      logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
@@ -211,14 +212,14 @@ std::unique_ptr<StructCmd> Parser::parse_struct_cmd(Token token) {
 /* ========== Stmt ========== */
 std::unique_ptr<Stmt> Parser::parse_stmt(Token token) {
   switch (token.type) {
-  case Token::Type::Let:
-    return parse_let_stmt(token);
-  case Token::Type::Assert:
-    return parse_assert_stmt(token);
-  case Token::Type::Return:
-    return parse_return_stmt(token);
-  default:
-    logger.log_error("Unexpected token: " + token.value, token.start);
+    case Token::Type::Let:
+      return parse_let_stmt(token);
+    case Token::Type::Assert:
+      return parse_assert_stmt(token);
+    case Token::Type::Return:
+      return parse_return_stmt(token);
+    default:
+      logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
@@ -246,41 +247,41 @@ std::unique_ptr<Expr> Parser::parse_expr(Token token) {
   std::unique_ptr<Expr> expr = parse_base_expr(token);
   while (true) {
     switch (lexer.peek().type) {
-    case Token::Type::Dot:
-      expr = parse_dot_expr(std::move(expr));
-      break;
-    case Token::Type::LSquare:
-      expr = parse_array_index_expr(std::move(expr));
-      break;
-    case Token::Type::LParen:
-      expr = parse_call_expr(lexer.next());
-      break;
-    default:
-      return expr;
+      case Token::Type::Dot:
+        expr = parse_dot_expr(std::move(expr));
+        break;
+      case Token::Type::LSquare:
+        expr = parse_array_index_expr(std::move(expr));
+        break;
+      case Token::Type::LParen:
+        expr = parse_call_expr(lexer.next());
+        break;
+      default:
+        return expr;
     }
   }
 }
 
 std::unique_ptr<Expr> Parser::parse_base_expr(Token token) {
   switch (token.type) {
-  case Token::Type::IntVal:
-    return parse_int_expr(token);
-  case Token::Type::FloatVal:
-    return parse_float_expr(token);
-  case Token::Type::True:
-    return parse_true_expr(token);
-  case Token::Type::False:
-    return parse_false_expr(token);
-  case Token::Type::Variable:
-    return parse_var_expr(token);
-  case Token::Type::Void:
-    return parse_void_expr(token);
-  case Token::Type::LSquare:
-    return parse_array_literal_expr(token);
-  case Token::Type::LParen:
-    return parse_paren_expr(token);
-  default:
-    logger.log_error("Unexpected token: " + token.value, token.start);
+    case Token::Type::IntVal:
+      return parse_int_expr(token);
+    case Token::Type::FloatVal:
+      return parse_float_expr(token);
+    case Token::Type::True:
+      return parse_true_expr(token);
+    case Token::Type::False:
+      return parse_false_expr(token);
+    case Token::Type::Variable:
+      return parse_var_expr(token);
+    case Token::Type::Void:
+      return parse_void_expr(token);
+    case Token::Type::LSquare:
+      return parse_array_literal_expr(token);
+    case Token::Type::LParen:
+      return parse_paren_expr(token);
+    default:
+      logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
 
@@ -321,12 +322,12 @@ std::unique_ptr<FalseExpr> Parser::parse_false_expr(Token token) {
 
 std::unique_ptr<Expr> Parser::parse_var_expr(Token token) {
   switch (lexer.peek().type) {
-  case Token::Type::LCurly:
-    return parse_struct_literal_expr(token);
-  case Token::Type::LParen:
-    return parse_call_expr(token);
-  default:
-    return std::make_unique<VarExpr>(std::move(token.value));
+    case Token::Type::LCurly:
+      return parse_struct_literal_expr(token);
+    case Token::Type::LParen:
+      return parse_call_expr(token);
+    default:
+      return std::make_unique<VarExpr>(std::move(token.value));
   }
 }
 
@@ -334,8 +335,8 @@ std::unique_ptr<VoidExpr> Parser::parse_void_expr(Token token) {
   return std::make_unique<VoidExpr>();
 }
 
-std::unique_ptr<ArrayLiteralExpr>
-Parser::parse_array_literal_expr(Token token) {
+std::unique_ptr<ArrayLiteralExpr> Parser::parse_array_literal_expr(
+    Token token) {
   std::vector<std::unique_ptr<Expr>> elements;
   while (true) {
     Token next = lexer.next();
@@ -352,8 +353,8 @@ Parser::parse_array_literal_expr(Token token) {
   }
 }
 
-std::unique_ptr<StructLiteralExpr>
-Parser::parse_struct_literal_expr(Token token) {
+std::unique_ptr<StructLiteralExpr> Parser::parse_struct_literal_expr(
+    Token token) {
   std::string identifier = token.value;
   consume(Token::Type::LCurly);
   std::vector<std::unique_ptr<Expr>> fields;
@@ -380,15 +381,15 @@ std::unique_ptr<Expr> Parser::parse_paren_expr(Token token) {
   return expr;
 }
 
-std::unique_ptr<DotExpr>
-Parser::parse_dot_expr(std::unique_ptr<Expr> base_expr) {
+std::unique_ptr<DotExpr> Parser::parse_dot_expr(
+    std::unique_ptr<Expr> base_expr) {
   consume(Token::Type::Dot);
   std::string field = consume(Token::Type::Variable).value;
   return std::make_unique<DotExpr>(std::move(base_expr), std::move(field));
 }
 
-std::unique_ptr<ArrayIndexExpr>
-Parser::parse_array_index_expr(std::unique_ptr<Expr> base_expr) {
+std::unique_ptr<ArrayIndexExpr> Parser::parse_array_index_expr(
+    std::unique_ptr<Expr> base_expr) {
   consume(Token::Type::LSquare);
   std::vector<std::unique_ptr<Expr>> indices;
   while (true) {
@@ -431,10 +432,10 @@ std::unique_ptr<CallExpr> Parser::parse_call_expr(Token token) {
 /* ========== LValue ========== */
 std::unique_ptr<LValue> Parser::parse_lvalue(Token token) {
   switch (lexer.peek().type) {
-  case Token::Type::LSquare:
-    return parse_array_lvalue(token);
-  default:
-    return parse_var_lvalue(token);
+    case Token::Type::LSquare:
+      return parse_array_lvalue(token);
+    default:
+      return parse_var_lvalue(token);
   }
 }
 
