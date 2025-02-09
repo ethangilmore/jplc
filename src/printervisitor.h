@@ -187,6 +187,52 @@ class PrinterVisitor : public ASTVisitor {
     std::cout << ")";
   }
 
+  void visit(const UnopExpr &node) override {
+    std::cout << "(UnopExpr " << node.op << " ";
+    node.expr->accept(*this);
+    std::cout << ")";
+  }
+
+  void visit(const BinopExpr &node) override {
+    std::cout << "(BinopExpr ";
+    node.left->accept(*this);
+    std::cout << " " << node.op << " ";
+    node.right->accept(*this);
+    std::cout << ")";
+  }
+
+  void visit(const IfExpr &node) override {
+    std::cout << "(IfExpr ";
+    node.condition->accept(*this);
+    std::cout << " ";
+    node.if_expr->accept(*this);
+    std::cout << " ";
+    node.else_expr->accept(*this);
+    std::cout << ")";
+  }
+
+  void visit(const ArrayLoopExpr &node) override {
+    std::cout << "(ArrayLoopExpr ";
+    for (const auto &[var, expr] : node.axis) {
+      std::cout << var << " ";
+      expr->accept(*this);
+      std::cout << " ";
+    }
+    node.expr->accept(*this);
+    std::cout << ")";
+  }
+
+  void visit(const SumLoopExpr &node) override {
+    std::cout << "(SumLoopExpr ";
+    for (const auto &[var, expr] : node.axis) {
+      std::cout << var << " ";
+      expr->accept(*this);
+      std::cout << " ";
+    }
+    node.expr->accept(*this);
+    std::cout << ")";
+  }
+
   /* ========== LValues ========== */
   void visit(const VarLValue &node) override {
     std::cout << "(VarLValue " << node.identifier << ")";

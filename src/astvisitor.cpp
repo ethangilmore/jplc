@@ -101,6 +101,34 @@ void ASTVisitor::visit(const CallExpr &node) {
   }
 }
 
+void ASTVisitor::visit(const SumLoopExpr &node) {
+  for (const auto &[variable, expr] : node.axis) {
+    expr->accept(*this);
+  }
+  node.expr->accept(*this);
+}
+
+void ASTVisitor::visit(const ArrayLoopExpr &node) {
+  for (const auto &[variable, expr] : node.axis) {
+    expr->accept(*this);
+  }
+  node.expr->accept(*this);
+}
+
+void ASTVisitor::visit(const IfExpr &node) {
+  node.if_expr->accept(*this);
+  node.else_expr->accept(*this);
+}
+
+void ASTVisitor::visit(const BinopExpr &node) {
+  node.left->accept(*this);
+  node.right->accept(*this);
+}
+
+void ASTVisitor::visit(const UnopExpr &node) {
+  node.expr->accept(*this);
+}
+
 void ASTVisitor::visit(const VarLValue &node) {}
 
 void ASTVisitor::visit(const ArrayLValue &node) {}

@@ -108,7 +108,7 @@ std::unique_ptr<ReadCmd> Parser::parse_read_cmd(Token token) {
   consume(Token::Type::Image);
   std::string string = consume(Token::Type::String).value;
   consume(Token::Type::To);
-  std::unique_ptr<VarLValue> lvalue = parse_var_lvalue(lexer.next());
+  std::unique_ptr<LValue> lvalue = parse_lvalue(lexer.next());
   return std::make_unique<ReadCmd>(std::string(string), std::move(lvalue));
 }
 
@@ -244,22 +244,72 @@ std::unique_ptr<ReturnStmt> Parser::parse_return_stmt(Token token) {
 
 /* ========== Expr ========== */
 std::unique_ptr<Expr> Parser::parse_expr(Token token) {
-  std::unique_ptr<Expr> expr = parse_base_expr(token);
-  while (true) {
-    switch (lexer.peek().type) {
-      case Token::Type::Dot:
-        expr = parse_dot_expr(std::move(expr));
-        break;
-      case Token::Type::LSquare:
-        expr = parse_array_index_expr(std::move(expr));
-        break;
-      case Token::Type::LParen:
-        expr = parse_call_expr(lexer.next());
-        break;
-      default:
-        return expr;
+  return parse_boolean_expr(token);
+}
+
+std::unique_ptr<Expr> Parser::parse_boolean_expr(Token token) {
+  std::unique_ptr<Expr> base_expr = parse_compare_expr(token);
+  std::unordered_set<std::string> ops{"&&", "||"};
+  while (ops.count(lexer.peek().value)) {
+    std::string op = lexer.next().value;
+    base_expr = std::make_unique<BinopExpr>(std::move(base_expr), op, parse_compare_expr(lexer.next()));
+  }
+  return base_expr;
+}
+
+std::unique_ptr<Expr> Parser::parse_compare_expr(Token token) {
+  std::unique_ptr<Expr> base_expr = parse_add_expr(token);
+  std::unordered_set<std::string> ops{"<", ">", "<=", ">=", "==", "!="};
+  while (ops.count(lexer.peek().value)) {
+    std::string op = lexer.next().value;
+    base_expr = std::make_unique<BinopExpr>(std::move(base_expr), op, parse_add_expr(lexer.next()));
+  }
+  return base_expr;
+}
+
+std::unique_ptr<Expr> Parser::parse_add_expr(Token token) {
+  std::unique_ptr<Expr> base_expr = parse_mult_expr(token);
+  std::unordered_set<std::string> ops{"+", "-"};
+  while (ops.count(lexer.peek().value)) {
+    std::string op = lexer.next().value;
+    base_expr = std::make_unique<BinopExpr>(std::move(base_expr), op, parse_mult_expr(lexer.next()));
+  }
+  return base_expr;
+}
+
+std::unique_ptr<Expr> Parser::parse_mult_expr(Token token) {
+  std::unique_ptr<Expr> base_expr = parse_unop_expr(token);
+  std::unordered_set<std::string> ops{"*", "/", "%"};
+  while (ops.count(lexer.peek().value)) {
+    std::string op = lexer.next().value;
+    base_expr = std::make_unique<BinopExpr>(std::move(base_expr), op, parse_unop_expr(lexer.next()));
+  }
+  return base_expr;
+}
+
+std::unique_ptr<Expr> Parser::parse_unop_expr(Token token) {
+  std::unordered_set<std::string> ops{"-", "!"};
+  if (ops.count(token.value)) {
+    auto expr = parse_unop_expr(lexer.next());
+    return std::make_unique<UnopExpr>(token.value, std::move(expr));
+  } else {
+    auto expr = parse_index_expr(token);
+    return expr;
+  }
+}
+
+std::unique_ptr<Expr> Parser::parse_index_expr(Token token) {
+  std::unique_ptr<Expr> base_expr = parse_base_expr(token);
+  while (lexer.peek().type == Token::Type::Dot || lexer.peek().type == Token::Type::LSquare) {
+    if (lexer.peek().type == Token::Type::Dot) {
+      base_expr = parse_dot_expr(std::move(base_expr));
+    } else if (lexer.peek().type == Token::Type::LSquare) {
+      base_expr = parse_array_index_expr(std::move(base_expr));
+    } else {
+      break;
     }
   }
+  return base_expr;
 }
 
 std::unique_ptr<Expr> Parser::parse_base_expr(Token token) {
@@ -280,20 +330,16 @@ std::unique_ptr<Expr> Parser::parse_base_expr(Token token) {
       return parse_array_literal_expr(token);
     case Token::Type::LParen:
       return parse_paren_expr(token);
+    case Token::Type::If:
+      return parse_if_expr(token);
+    case Token::Type::Array:
+      return parse_array_loop_expr(token);
+    case Token::Type::Sum:
+      return parse_sum_loop_expr(token);
     default:
       logger.log_error("Unexpected token: " + token.value, token.start);
   }
 }
-
-// std::unique_ptr<Expr> Parser::parse_cont_expr(Token token) {
-//   Token next = lexer.next();
-//   switch (next.type) {
-//     case Token::Type::Dot:
-//       return parse_dot_expr(parse_var_expr(token));
-//     case Token::Type::LSquare:
-//       return parse_array_index_expr(parse_var_expr(token));
-//   }
-// }
 
 std::unique_ptr<IntExpr> Parser::parse_int_expr(Token token) {
   try {
@@ -427,6 +473,61 @@ std::unique_ptr<CallExpr> Parser::parse_call_expr(Token token) {
     }
   }
   return std::make_unique<CallExpr>(std::move(identifier), std::move(args));
+}
+
+std::unique_ptr<ArrayLoopExpr> Parser::parse_array_loop_expr(Token token) {
+  consume(Token::Type::LSquare);
+  std::vector<std::pair<std::string, std::unique_ptr<Expr>>> axis;
+  while (true) {
+    if (lexer.peek().type == Token::Type::RSquare) {
+      consume(Token::Type::RSquare);
+      break;
+    }
+    auto variable = consume(Token::Type::Variable).value;
+    consume(Token::Type::Colon);
+    auto expr = parse_expr(lexer.next());
+    axis.push_back(std::make_pair(variable, std::move(expr)));
+    auto next = lexer.next();
+    if (next.type == Token::Type::RSquare) {
+      break;
+    } else if (next.type != Token::Type::Comma) {
+      logger.log_error("Unexpected token: " + next.value, next.start);
+    }
+  }
+  auto expr = parse_expr(lexer.next());
+  return std::make_unique<ArrayLoopExpr>(std::move(axis), std::move(expr));
+}
+
+std::unique_ptr<SumLoopExpr> Parser::parse_sum_loop_expr(Token token) {
+  consume(Token::Type::LSquare);
+  std::vector<std::pair<std::string, std::unique_ptr<Expr>>> axis;
+  while (true) {
+    if (lexer.peek().type == Token::Type::RSquare) {
+      consume(Token::Type::RSquare);
+      break;
+    }
+    auto variable = consume(Token::Type::Variable).value;
+    consume(Token::Type::Colon);
+    auto expr = parse_expr(lexer.next());
+    axis.push_back(std::make_pair(variable, std::move(expr)));
+    auto next = lexer.next();
+    if (next.type == Token::Type::RSquare) {
+      break;
+    } else if (next.type != Token::Type::Comma) {
+      logger.log_error("Unexpected token: " + next.value, next.start);
+    }
+  }
+  auto expr = parse_expr(lexer.next());
+  return std::make_unique<SumLoopExpr>(std::move(axis), std::move(expr));
+}
+
+std::unique_ptr<IfExpr> Parser::parse_if_expr(Token token) {
+  auto condition = parse_expr(lexer.next());
+  consume(Token::Type::Then);
+  auto if_expr = parse_expr(lexer.next());
+  consume(Token::Type::Else);
+  auto else_expr = parse_expr(lexer.next());
+  return std::make_unique<IfExpr>(std::move(condition), std::move(if_expr), std::move(else_expr));
 }
 
 /* ========== LValue ========== */

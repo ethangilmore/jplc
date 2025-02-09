@@ -51,6 +51,16 @@ class Parser {
       std::unique_ptr<Expr> base_expr);
   std::unique_ptr<CallExpr> parse_call_expr(Token token);
 
+  std::unique_ptr<IfExpr> parse_if_expr(Token token);
+  std::unique_ptr<ArrayLoopExpr> parse_array_loop_expr(Token token);
+  std::unique_ptr<SumLoopExpr> parse_sum_loop_expr(Token token);
+  std::unique_ptr<Expr> parse_index_expr(Token token);
+  std::unique_ptr<Expr> parse_add_expr(Token token);
+  std::unique_ptr<Expr> parse_mult_expr(Token token);
+  std::unique_ptr<Expr> parse_compare_expr(Token token);
+  std::unique_ptr<Expr> parse_boolean_expr(Token token);
+  std::unique_ptr<Expr> parse_unop_expr(Token token);
+
   // Stmt
   std::unique_ptr<Stmt> parse_stmt(Token token);
   std::unique_ptr<LetStmt> parse_let_stmt(Token token);

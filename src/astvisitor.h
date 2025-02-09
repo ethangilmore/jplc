@@ -41,6 +41,11 @@ class StructLiteralExpr;
 class DotExpr;
 class ArrayIndexExpr;
 class CallExpr;
+class UnopExpr;
+class BinopExpr;
+class IfExpr;
+class ArrayLoopExpr;
+class SumLoopExpr;
 
 class LValue;
 class VarLValue;
@@ -89,6 +94,11 @@ class ASTVisitor {
   virtual void visit(const DotExpr &node);
   virtual void visit(const ArrayIndexExpr &node);
   virtual void visit(const CallExpr &node);
+  virtual void visit(const UnopExpr &node);
+  virtual void visit(const BinopExpr &node);
+  virtual void visit(const IfExpr &node);
+  virtual void visit(const ArrayLoopExpr &node);
+  virtual void visit(const SumLoopExpr &node);
 
   // LValues
   virtual void visit(const VarLValue &node);

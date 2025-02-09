@@ -49,7 +49,7 @@ const std::unordered_map<std::string, Token::Type> Lexer::punctuations{
     {"=", Token::Type::Equals},
     {".", Token::Type::Dot}};
 
-const std::unordered_set<std::string> Lexer::operators = {"+", "-", "*", "/", "<", ">", "%", "!", "&&", "==", "!=", "<=", ">="};
+const std::unordered_set<std::string> Lexer::operators = {"+", "-", "*", "/", "<", ">", "%", "!", "&&", "||", "==", "!=", "<=", ">="};
 
 const std::vector<std::optional<Token> (Lexer::*)()> Lexer::lexemes = {
     &Lexer::lex_whitespace,

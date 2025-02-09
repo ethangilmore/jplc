@@ -78,8 +78,8 @@ class VoidType : public Type {
 class ReadCmd : public Cmd {
  public:
   std::string string;
-  std::unique_ptr<VarLValue> lvalue;
-  ReadCmd(std::string string, std::unique_ptr<VarLValue> lvalue)
+  std::unique_ptr<LValue> lvalue;
+  ReadCmd(std::string string, std::unique_ptr<LValue> lvalue)
       : string(std::move(string)), lvalue(std::move(lvalue)) {}
   void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
 };
@@ -264,6 +264,48 @@ class CallExpr : public Expr {
   std::vector<std::unique_ptr<Expr>> args;
   CallExpr(std::string identifier, std::vector<std::unique_ptr<Expr>> args)
       : identifier(std::move(identifier)), args(std::move(args)) {}
+  void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
+};
+
+class UnopExpr : public Expr {
+ public:
+  std::string op;
+  std::unique_ptr<Expr> expr;
+  UnopExpr(std::string op, std::unique_ptr<Expr> expr) : op(std::move(op)), expr(std::move(expr)) {}
+  void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
+};
+
+class BinopExpr : public Expr {
+ public:
+  std::unique_ptr<Expr> left;
+  std::string op;
+  std::unique_ptr<Expr> right;
+  BinopExpr(std::unique_ptr<Expr> left, std::string op, std::unique_ptr<Expr> right) : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
+  void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
+};
+
+class IfExpr : public Expr {
+ public:
+  std::unique_ptr<Expr> condition;
+  std::unique_ptr<Expr> if_expr;
+  std::unique_ptr<Expr> else_expr;
+  IfExpr(std::unique_ptr<Expr> condition, std::unique_ptr<Expr> if_expr, std::unique_ptr<Expr> else_expr) : condition(std::move(condition)), if_expr(std::move(if_expr)), else_expr(std::move(else_expr)) {}
+  void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
+};
+
+class ArrayLoopExpr : public Expr {
+ public:
+  std::vector<std::pair<std::string, std::unique_ptr<Expr>>> axis;
+  std::unique_ptr<Expr> expr;
+  ArrayLoopExpr(std::vector<std::pair<std::string, std::unique_ptr<Expr>>> axis, std::unique_ptr<Expr> expr) : axis(std::move(axis)), expr(std::move(expr)) {}
+  void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
+};
+
+class SumLoopExpr : public Expr {
+ public:
+  std::vector<std::pair<std::string, std::unique_ptr<Expr>>> axis;
+  std::unique_ptr<Expr> expr;
+  SumLoopExpr(std::vector<std::pair<std::string, std::unique_ptr<Expr>>> axis, std::unique_ptr<Expr> expr) : axis(std::move(axis)), expr(std::move(expr)) {}
   void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
 };
 
