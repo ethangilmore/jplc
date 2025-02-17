@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <optional>
 
 #include "context.h"
 #include "resolvedtype.h"

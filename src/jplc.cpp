@@ -6,8 +6,7 @@
 #include "logger.h"
 #include "parser.h"
 #include "printervisitor.h"
-#include "typechecker.h"
-#include "context.h"
+#include "typecheckervisitor.h"
 
 struct Options {
   std::string input;
@@ -59,12 +58,12 @@ int main(int argc, char *argv[]) {
   }
   Parser parser(lexer, logger);
   std::unique_ptr<Program> program = parser.parse();
-  TypeChecker typechecker(logger);
-  typechecker.typecheck(*program);
+  TypeCheckerVisitor typechecker(logger);
+  program->accept(typechecker);
   // if (options.parse) {
-  //   PrinterVisitor visitor;
-  //   program->accept(visitor);
-  //   std::cout << "\nCompilation succeeded" << std::endl;
-  //   exit(0);
+    PrinterVisitor visitor;
+    program->accept(visitor);
+    std::cout << "\nCompilation succeeded" << std::endl;
+    exit(0);
   // }
 }

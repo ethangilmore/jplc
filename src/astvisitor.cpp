@@ -14,7 +14,9 @@ void ASTVisitor::visit(const BoolType &node) {}
 
 void ASTVisitor::visit(const FloatType &node) {}
 
-void ASTVisitor::visit(const ArrayType &node) {}
+void ASTVisitor::visit(const ArrayType &node) {
+  node.element_type->accept(*this);
+}
 
 void ASTVisitor::visit(const StructType &node) {}
 
@@ -116,6 +118,7 @@ void ASTVisitor::visit(const ArrayLoopExpr &node) {
 }
 
 void ASTVisitor::visit(const IfExpr &node) {
+  node.condition->accept(*this);
   node.if_expr->accept(*this);
   node.else_expr->accept(*this);
 }

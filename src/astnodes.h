@@ -17,7 +17,11 @@ class ASTNode {
   virtual ~ASTNode() = default;
 };
 
-class Type : public ASTNode {};
+class Type : public ASTNode {
+public:
+  // virtual ~Expr() = 0;
+  mutable std::shared_ptr<ResolvedType> type;
+};
 
 class Cmd : public ASTNode {};
 
@@ -59,10 +63,10 @@ class FloatType : public Type {
 
 class ArrayType : public Type {
  public:
-  std::unique_ptr<Type> type;
+  std::unique_ptr<Type> element_type;
   size_t rank;
-  ArrayType(std::unique_ptr<Type> type, size_t rank)
-      : type(std::move(type)), rank(rank) {}
+  ArrayType(std::unique_ptr<Type> element_type, size_t rank)
+      : element_type(std::move(element_type)), rank(rank) {}
   void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
 };
 

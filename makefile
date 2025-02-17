@@ -11,9 +11,13 @@ all: run
 $(EXEC): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+# Generate dependencies with -MMD and -MP
 build/%.o: src/%.cpp
-	@mkdir -p build
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+# Include the generated dependency files
+-include $(OBJS:.o=.d)
 
 compile: $(EXEC)
 

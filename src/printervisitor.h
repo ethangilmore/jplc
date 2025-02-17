@@ -22,7 +22,7 @@ class PrinterVisitor : public ASTVisitor {
 
   void visit(const ArrayType &node) override {
     std::cout << "(ArrayType ";
-    node.type->accept(*this);
+    node.element_type->accept(*this);
     std::cout << " " << node.rank << ")";
   }
 
@@ -127,25 +127,58 @@ class PrinterVisitor : public ASTVisitor {
 
   /* ========== Expressions ========== */
   void visit(const IntExpr &node) override {
-    std::cout << "(IntExpr " << node.value << ")";
+    std::cout << "(IntExpr ";
+    if (node.type) {
+    std::cout << node.type->to_string() << " ";
+    }
+    std::cout << node.value << ")";
   }
 
   void visit(const FloatExpr &node) override {
-    std::cout << "(FloatExpr " << static_cast<long>(node.value) << ")";
+    std::cout << "(FloatExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
+    std::cout << static_cast<long>(node.value) << ")";
   }
 
-  void visit(const TrueExpr &node) override { std::cout << "(TrueExpr)"; }
+  void visit(const TrueExpr &node) override {
+    std::cout << "(TrueExpr";
+    if (node.type) {
+      std::cout << " " << node.type->to_string();
+    }
+    std::cout << ")";
+  }
 
-  void visit(const FalseExpr &node) override { std::cout << "(FalseExpr)"; }
+  void visit(const FalseExpr &node) override {
+    std::cout << "(FalseExpr";
+    if (node.type) {
+      std::cout << " " << node.type->to_string();
+    }
+    std::cout << ")";
+  }
 
   void visit(const VarExpr &node) override {
-    std::cout << "(VarExpr " << node.identifier << ")";
+    std::cout << "(VarExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
+    std::cout << node.identifier << ")";
   }
 
-  void visit(const VoidExpr &node) override { std::cout << "(VoidExpr)"; }
+  void visit(const VoidExpr &node) override {
+    std::cout << "(VoidExpr";
+    if (node.type) {
+      std::cout << " " << node.type->to_string();
+    }
+    std::cout << ")";
+  }
 
   void visit(const ArrayLiteralExpr &node) override {
     std::cout << "(ArrayLiteralExpr";
+    if (node.type) {
+      std::cout << " " << node.type->to_string();
+    }
     for (const auto &expr : node.elements) {
       std::cout << " ";
       expr->accept(*this);
@@ -154,7 +187,11 @@ class PrinterVisitor : public ASTVisitor {
   }
 
   void visit(const StructLiteralExpr &node) override {
-    std::cout << "(StructLiteralExpr " << node.identifier;
+    std::cout << "(StructLiteralExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
+    std::cout << node.identifier;
     for (const auto &expr : node.fields) {
       std::cout << " ";
       expr->accept(*this);
@@ -164,12 +201,18 @@ class PrinterVisitor : public ASTVisitor {
 
   void visit(const DotExpr &node) override {
     std::cout << "(DotExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
     node.expr->accept(*this);
     std::cout << " " << node.field << ")";
   }
 
   void visit(const ArrayIndexExpr &node) override {
     std::cout << "(ArrayIndexExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
     node.expr->accept(*this);
     for (const auto &index : node.indices) {
       std::cout << " ";
@@ -179,7 +222,11 @@ class PrinterVisitor : public ASTVisitor {
   }
 
   void visit(const CallExpr &node) override {
-    std::cout << "(CallExpr " << node.identifier;
+    std::cout << "(CallExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
+    std::cout << node.identifier;
     for (const auto &arg : node.args) {
       std::cout << " ";
       arg->accept(*this);
@@ -188,13 +235,20 @@ class PrinterVisitor : public ASTVisitor {
   }
 
   void visit(const UnopExpr &node) override {
-    std::cout << "(UnopExpr " << node.op << " ";
+    std::cout << "(UnopExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
+    std::cout << node.op << " ";
     node.expr->accept(*this);
     std::cout << ")";
   }
 
   void visit(const BinopExpr &node) override {
     std::cout << "(BinopExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
     node.left->accept(*this);
     std::cout << " " << node.op << " ";
     node.right->accept(*this);
@@ -203,6 +257,9 @@ class PrinterVisitor : public ASTVisitor {
 
   void visit(const IfExpr &node) override {
     std::cout << "(IfExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
     node.condition->accept(*this);
     std::cout << " ";
     node.if_expr->accept(*this);
@@ -213,6 +270,9 @@ class PrinterVisitor : public ASTVisitor {
 
   void visit(const ArrayLoopExpr &node) override {
     std::cout << "(ArrayLoopExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
     for (const auto &[var, expr] : node.axis) {
       std::cout << var << " ";
       expr->accept(*this);
@@ -224,6 +284,9 @@ class PrinterVisitor : public ASTVisitor {
 
   void visit(const SumLoopExpr &node) override {
     std::cout << "(SumLoopExpr ";
+    if (node.type) {
+      std::cout << node.type->to_string() << " ";
+    }
     for (const auto &[var, expr] : node.axis) {
       std::cout << var << " ";
       expr->accept(*this);
