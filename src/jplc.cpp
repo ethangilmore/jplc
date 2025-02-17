@@ -6,6 +6,8 @@
 #include "logger.h"
 #include "parser.h"
 #include "printervisitor.h"
+#include "typechecker.h"
+#include "context.h"
 
 struct Options {
   std::string input;
@@ -15,8 +17,20 @@ struct Options {
 };
 
 int main(int argc, char *argv[]) {
+  // Context ctx;
+  // auto type = std::make_shared<Int>();
+  // auto info = std::make_shared<ValueInfo>("asdf", type);
+  // ctx.add(info);
+  // 
+  // if (auto i = ctx.lookup<ValueInfo>("asdf")) {
+  //   std::cout << "yay" << std::endl;
+  // } else {
+  //   std::cout << "uh oh" << std::endl;
+  // }
+
   // std::cout << "Hello, World!" << std::endl;
   // exit(0);
+
   std::vector<std::string> args(argv + 1, argv + argc);
   Options options = {
       .input = args[0],
@@ -44,11 +58,13 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
   Parser parser(lexer, logger);
-  if (options.parse) {
-    std::unique_ptr<ASTNode> node = parser.parse();
-    PrinterVisitor visitor;
-    node->accept(visitor);
-    std::cout << "\nCompilation succeeded" << std::endl;
-    exit(0);
-  }
+  std::unique_ptr<Program> program = parser.parse();
+  TypeChecker typechecker(logger);
+  typechecker.typecheck(*program);
+  // if (options.parse) {
+  //   PrinterVisitor visitor;
+  //   program->accept(visitor);
+  //   std::cout << "\nCompilation succeeded" << std::endl;
+  //   exit(0);
+  // }
 }

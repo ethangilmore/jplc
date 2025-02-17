@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "astvisitor.h"
+#include "resolvedtype.h"
 
 class ASTNode {
  public:
@@ -22,7 +23,11 @@ class Cmd : public ASTNode {};
 
 class Stmt : public ASTNode {};
 
-class Expr : public ASTNode {};
+class Expr : public ASTNode {
+public:
+  // virtual ~Expr() = 0;
+  mutable std::shared_ptr<ResolvedType> type;
+};
 
 class LValue : public ASTNode {};
 
