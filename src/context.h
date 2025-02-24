@@ -14,7 +14,7 @@ class Context;
 struct NameInfo {
 public:
   NameInfo(std::string name);
-  virtual ~NameInfo() = 0;
+  virtual ~NameInfo();
   std::string name;
 };
 
@@ -30,10 +30,17 @@ public:
   std::vector<std::pair<std::string, std::shared_ptr<ResolvedType>>> fields;
 };
 
+struct FnInfo : public NameInfo {
+public:
+  std::vector<std::shared_ptr<ResolvedType>> param_types;
+  std::shared_ptr<ResolvedType> return_type;
+  FnInfo(std::string name, std::vector<std::shared_ptr<ResolvedType>> param_types, std::shared_ptr<ResolvedType> return_type);
+};
+
 class Context {
 public:
   Context();
-  Context(Context* parent);
+  Context(std::shared_ptr<Context> parent);
 
   void add(std::shared_ptr<NameInfo> info);
 
@@ -45,6 +52,12 @@ public:
         return *casted;
       }
     }
+    if (parent == nullptr) {
+      return std::nullopt;
+    }
+    if (auto result = parent->lookup<T>(identifier)) {
+      return result;
+    } 
     return std::nullopt;
   }
   

@@ -12,9 +12,11 @@ StructInfo::StructInfo(std::string name, std::vector<std::pair<std::string, std:
 
 Context::Context() {};
 
-Context::Context(Context* parent) : parent(parent) {}
+Context::Context(std::shared_ptr<Context> parent) : parent(parent) {}
 
 void Context::add(std::shared_ptr<NameInfo> info) {
   table[info->name] = std::move(info);
 };
 
+FnInfo::FnInfo(std::string name, std::vector<std::shared_ptr<ResolvedType>> param_types, std::shared_ptr<ResolvedType> return_type)
+  : NameInfo(name), param_types(param_types), return_type(return_type) {}

@@ -25,7 +25,7 @@ public:
 
 class Cmd : public ASTNode {};
 
-class Stmt : public ASTNode {};
+class Stmt : public Cmd {};
 
 class Expr : public ASTNode {
 public:
@@ -33,7 +33,11 @@ public:
   mutable std::shared_ptr<ResolvedType> type;
 };
 
-class LValue : public ASTNode {};
+class LValue : public ASTNode {
+public:
+  std::string identifier;
+  LValue(std::string identifier) : identifier(std::move(identifier)) {}
+};
 
 class Program : public ASTNode {
  public:
@@ -321,17 +325,15 @@ class SumLoopExpr : public Expr {
 /* ========== LValues ========== */
 class VarLValue : public LValue {
  public:
-  std::string identifier;
-  VarLValue(std::string identifier) : identifier(std::move(identifier)) {}
+  VarLValue(std::string identifier) : LValue(identifier) {}
   void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
 };
 
 class ArrayLValue : public LValue {
  public:
-  std::string identifier;
   std::vector<std::string> indices;
   ArrayLValue(std::string identifier, std::vector<std::string> indices)
-      : identifier(std::move(identifier)), indices(std::move(indices)) {}
+      : LValue(identifier), indices(std::move(indices)) {}
   void accept(ASTVisitor &visitor) override { visitor.visit(*this); }
 };
 
