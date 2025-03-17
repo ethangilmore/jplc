@@ -37,6 +37,7 @@ class Expr : public ASTNode {
 class LValue : public ASTNode {
  public:
   std::string identifier;
+  mutable std::string symbol;
   LValue(std::string identifier) : identifier(std::move(identifier)) {}
 };
 

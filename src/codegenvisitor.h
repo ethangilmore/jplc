@@ -64,13 +64,36 @@ class CodeGenVisitor : public ASTVisitor {
   }
 
   virtual void visit(const BinopExpr& expr) override {
-    ASTVisitor::visit(expr);
-    auto symbol = expr.symbol = gensym();
-    auto c_type = expr.type->c_type();
-    if (expr.op == "%" && expr.type->is<Float>()) {
-      println(c_type + " " + symbol + " = fmod(" + expr.left->symbol + ", " + expr.right->symbol + ");");
+    if (expr.op == "&&") {
+      auto symbol = expr.symbol = gensym();
+      expr.left->accept(*this);
+      println("bool " + symbol + " = " + expr.left->symbol);
+      auto label = genlabel();
+      println("if (0 == " + expr.left->symbol + ")");
+      println("goto " + label + ";");
+      expr.right->accept(*this);
+      println(symbol + " = " + expr.right->symbol + ";");
+      println(label + ":;");
+    } else if (expr.op == "||") {
+      auto symbol = expr.symbol = gensym();
+      expr.left->accept(*this);
+      println("bool " + symbol + " = " + expr.left->symbol);
+      println("if (0 != " + expr.left->symbol + ")");
+      auto label = genlabel();
+      println("goto " + label + ";");
+      expr.right->accept(*this);
+      println(symbol + " = " + expr.right->symbol + ";");
+      println(label + ":;");
     } else {
-      println(c_type + " " + symbol + " = " + expr.left->symbol + " " + expr.op + " " + expr.right->symbol + ";");
+      expr.left->accept(*this);
+      expr.right->accept(*this);
+      auto symbol = expr.symbol = gensym();
+      auto c_type = expr.type->c_type();
+      if (expr.op == "%" && expr.type->is<Float>()) {
+        println(c_type + " " + symbol + " = fmod(" + expr.left->symbol + ", " + expr.right->symbol + ");");
+      } else {
+        println(c_type + " " + symbol + " = " + expr.left->symbol + " " + expr.op + " " + expr.right->symbol + ";");
+      }
     }
   }
 
@@ -188,8 +211,6 @@ class CodeGenVisitor : public ASTVisitor {
     println(type + " " + symbol + " = " + expr.identifier + args + ";");
   }
 
-  // expr here
-
   virtual void visit(const AssertCmd& expr) override {
     ASTVisitor::visit(expr);
     auto label = genlabel();
@@ -197,6 +218,17 @@ class CodeGenVisitor : public ASTVisitor {
     println("goto " + label + ";");
     println("fail_assertion(" + expr.string + ");");
     println(label + ":;");
+  }
+
+  virtual void visit(const ReadCmd& cmd) override {
+    std::string symbol = gensym();
+    println("_a2_rgba " + symbol + " = read_image(" + cmd.string + ");");
+    if (auto array_lvalue = dynamic_cast<ArrayLValue*>(cmd.lvalue.get())) {
+      println("int64_t " + array_lvalue->indices[0] + " = " + symbol + ".d0;");
+      println("int64_t " + array_lvalue->indices[1] + " = " + symbol + ".d1;");
+    }
+    last_symbol = symbol;
+    cmd.lvalue->accept(*this);
   }
 
   virtual void visit(const AssertStmt& expr) override {
