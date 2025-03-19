@@ -211,7 +211,84 @@ class CodeGenVisitor : public ASTVisitor {
     println(type + " " + symbol + " = " + expr.identifier + args + ";");
   }
 
-  virtual void visit(const AssertCmd& expr) override {
+  virtual void visit(const SumLoopExpr& expr) override {
+    auto symbol = expr.symbol = gensym();
+    if (expr.expr->type->is<Int>()) {
+      println("int64_t " + symbol + ";");
+    } else {
+      println("double " + symbol + ";");
+    }
+    for (const auto& [name, limit] : expr.axis) {
+      limit->accept(*this);
+      println("if (" + limit->symbol + " > 0)");
+      auto label = genlabel();
+      println("goto " + label + ";");
+      println("fail_assertion(\"non-positive loop bound\");");
+      println(label + ":;");
+    }
+    println(symbol + " = 0;");
+    std::vector<std::string> symbols{};
+    for (int i = expr.axis.size() - 1; i >= 0; --i) {
+      auto symbol = gensym();
+      symbols.insert(symbols.begin(), symbol);
+      println("int64_t " + symbol + " = 0;");
+      var_map.insert({expr.axis[i].first, symbol});
+    }
+    auto loop = genlabel();
+    println(loop + ":; // loop start");
+    expr.expr->accept(*this);
+    println(symbol + " += " + expr.expr->symbol + ";");
+    for (int i = expr.axis.size() - 1; i >= 0; --i) {
+      println(symbols[i] + "++;");
+      println("if (" + symbols[i] + " < " + expr.axis[i].second->symbol + ")");
+      println("goto " + loop + ";");
+      if (i > 0) {
+        println(symbols[i] + " = 0;");
+      }
+    }
+  }
+
+  virtual void visit(const ArrayLoopExpr& expr) override {
+    auto symbol = expr.symbol = gensym();
+    if (expr.expr->type->is<Int>()) {
+      println("int64_t " + symbol + ";");
+    } else {
+      println("double " + symbol + ";");
+    }
+    for (const auto& [name, limit] : expr.axis) {
+      limit->accept(*this);
+      println("if (" + limit->symbol + " > 0)");
+      auto label = genlabel();
+      println("goto " + label + ";");
+      println("fail_assertion(\"non-positive loop bound\");");
+      println(label + ":;");
+    }
+    println(symbol + " = 0;");
+    std::vector<std::string> symbols{};
+    for (int i = expr.axis.size() - 1; i >= 0; --i) {
+      auto symbol = gensym();
+      symbols.insert(symbols.begin(), symbol);
+      println("int64_t " + symbol + " = 0;");
+      var_map.insert({expr.axis[i].first, symbol});
+    }
+    auto loop = genlabel();
+    println(loop + ":; // loop start");
+    expr.expr->accept(*this);
+    println(symbol + " += " + expr.expr->symbol + ";");
+    for (int i = expr.axis.size() - 1; i >= 0; --i) {
+      println(symbols[i] + "++;");
+      println("if (" + symbols[i] + " < " + expr.axis[i].second->symbol + ")");
+      println("goto " + loop + ";");
+      if (i > 0) {
+        println(symbols[i] + " = 0;");
+      }
+    }
+  }
+
+  // expr here
+
+  virtual void
+  visit(const AssertCmd& expr) override {
     ASTVisitor::visit(expr);
     auto label = genlabel();
     println("if (0 != " + expr.expr->symbol + ")");
