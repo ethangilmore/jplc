@@ -2,11 +2,13 @@
 #include <iostream>
 #include <vector>
 
+#include "codegenvisitor.h"
 #include "lexer.h"
 #include "logger.h"
 #include "parser.h"
 #include "printervisitor.h"
 #include "typecheckervisitor.h"
+// #include "typedefvisitor.h"
 
 struct Options {
   std::string input;
@@ -20,7 +22,7 @@ int main(int argc, char *argv[]) {
   // auto type = std::make_shared<Int>();
   // auto info = std::make_shared<ValueInfo>("asdf", type);
   // ctx.add(info);
-  // 
+  //
   // if (auto i = ctx.lookup<ValueInfo>("asdf")) {
   //   std::cout << "yay" << std::endl;
   // } else {
@@ -60,10 +62,15 @@ int main(int argc, char *argv[]) {
   std::unique_ptr<Program> program = parser.parse();
   TypeCheckerVisitor typechecker(logger);
   program->accept(typechecker);
-  // if (options.parse) {
+  if (options.parse) {
     PrinterVisitor visitor;
     program->accept(visitor);
     std::cout << "\nCompilation succeeded" << std::endl;
     exit(0);
-  // }
+  }
+  // TypeDefGenerator generator(typechecker.ctx, logger);
+  CodeGenVisitor generator(typechecker.ctx, logger);
+  program->accept(generator);
+  std::cout << "\nCompilation succeeded" << std::endl;
+  exit(0);
 }

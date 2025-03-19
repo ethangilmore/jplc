@@ -1,42 +1,47 @@
-#include "astvisitor.h"
-#include "logger.h"
-#include "context.h"
-#include "astnodes.h"
 #include <functional>
 #include <iostream>
 #include <memory>
 
+#include "astnodes.h"
+#include "astvisitor.h"
+#include "context.h"
+#include "logger.h"
+
 class TypeCheckerVisitor : public ASTVisitor {
-public:
+ public:
+  std::shared_ptr<Context> ctx;
+
   TypeCheckerVisitor(Logger& logger) : logger(logger) {}
 
   virtual void visit(const Program& program) override {
     ctx = std::make_shared<Context>();
     auto f = std::make_shared<Float>();
     auto i = std::make_shared<Int>();
-    ctx->add(std::make_shared<StructInfo>( "rgba", 
-      std::vector<std::pair<std::string, std::shared_ptr<ResolvedType>>>{
-        {"r", f}, {"g", f}, {"b", f}, {"a", f},
-      }
-    ));
+    ctx->add(std::make_shared<StructInfo>("rgba",
+                                          std::vector<std::pair<std::string, std::shared_ptr<ResolvedType>>>{
+                                              {"r", f},
+                                              {"g", f},
+                                              {"b", f},
+                                              {"a", f},
+                                          }));
     ctx->add(std::make_shared<ValueInfo>("args", std::make_shared<Array>(i, 1)));
     ctx->add(std::make_shared<ValueInfo>("argnum", i));
-    ctx->add(std::make_shared<FnInfo>("sin", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("sqrt", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("exp", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("sin", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("cos", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("tan", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("asin", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("acos", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("atan", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("log", std::vector<std::shared_ptr<ResolvedType>>{ f }, f));
-    ctx->add(std::make_shared<FnInfo>("pow", std::vector<std::shared_ptr<ResolvedType>>{ f, f }, f));
-    ctx->add(std::make_shared<FnInfo>("atan2", std::vector<std::shared_ptr<ResolvedType>>{ f, f }, f));
-    ctx->add(std::make_shared<FnInfo>("to_int", std::vector<std::shared_ptr<ResolvedType>>{ f }, i));
-    ctx->add(std::make_shared<FnInfo>("to_float", std::vector<std::shared_ptr<ResolvedType>>{ i }, f));
+    ctx->add(std::make_shared<FnInfo>("sin", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("sqrt", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("exp", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("sin", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("cos", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("tan", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("asin", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("acos", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("atan", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("log", std::vector<std::shared_ptr<ResolvedType>>{f}, f));
+    ctx->add(std::make_shared<FnInfo>("pow", std::vector<std::shared_ptr<ResolvedType>>{f, f}, f));
+    ctx->add(std::make_shared<FnInfo>("atan2", std::vector<std::shared_ptr<ResolvedType>>{f, f}, f));
+    ctx->add(std::make_shared<FnInfo>("to_int", std::vector<std::shared_ptr<ResolvedType>>{f}, i));
+    ctx->add(std::make_shared<FnInfo>("to_float", std::vector<std::shared_ptr<ResolvedType>>{i}, f));
     ASTVisitor::visit(program);
-  };
+  }
 
   virtual void visit(const ReadCmd& cmd) override {
     ASTVisitor::visit(cmd);
@@ -142,7 +147,7 @@ public:
     if (ctx->lookup<NameInfo>(cmd.identifier)) {
       logger.log_error("Redeclaration of function", 0);
     }
-    for (const auto &binding : cmd.params) {
+    for (const auto& binding : cmd.params) {
       binding->type->accept(*this);
     }
     cmd.return_type->accept(*this);
@@ -161,7 +166,7 @@ public:
     }
     expected_return_type = return_type;
     returned = false;
-    for (const auto &stmt : cmd.stmts) {
+    for (const auto& stmt : cmd.stmts) {
       stmt->accept(*this);
     }
     if (!returned && !return_type->is<Void>()) {
@@ -231,7 +236,7 @@ public:
     expr.type = std::make_shared<Bool>();
   };
 
-  virtual void visit(const VarExpr &expr) override {
+  virtual void visit(const VarExpr& expr) override {
     auto info = ctx->lookup<ValueInfo>(expr.identifier);
     if (auto info = ctx->lookup<ValueInfo>(expr.identifier)) {
       expr.type = info->type;
@@ -240,7 +245,7 @@ public:
     }
   };
 
-  virtual void visit(const VoidExpr &expr) override {
+  virtual void visit(const VoidExpr& expr) override {
     expr.type = std::make_shared<Void>();
   }
 
@@ -283,7 +288,7 @@ public:
       if (expr.fields.size() != info->fields.size()) {
         logger.log_error("Wrong number of fields", 0);
       }
-      for (int i = 0; i < expr.fields.size(); i++) {
+      for (size_t i = 0; i < expr.fields.size(); i++) {
         auto expr_type = expr.fields[i]->type;
         auto info_type = info->fields[i].second;
         if (*expr_type != *info_type) {
@@ -426,7 +431,7 @@ public:
       }
       auto info = std::make_shared<ValueInfo>(index, std::make_shared<Int>());
       ctx->add(info);
-      // std::cout << "added 
+      // std::cout << "added
     }
     // auto info = std::make_shared<ValueInfo>(lvalue.identifier, std::shared_ptr<
   };
@@ -442,9 +447,8 @@ public:
     ctx->add(info);
   };
 
-private:
+ private:
   Logger& logger;
-  std::shared_ptr<Context> ctx;
   bool returned;
   std::shared_ptr<ResolvedType> expected_return_type;
 };

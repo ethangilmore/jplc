@@ -18,7 +18,7 @@ class ASTNode {
 };
 
 class Type : public ASTNode {
-public:
+ public:
   // virtual ~Expr() = 0;
   mutable std::shared_ptr<ResolvedType> type;
 };
@@ -28,13 +28,14 @@ class Cmd : public ASTNode {};
 class Stmt : public Cmd {};
 
 class Expr : public ASTNode {
-public:
+ public:
   // virtual ~Expr() = 0;
   mutable std::shared_ptr<ResolvedType> type;
+  mutable std::string symbol;
 };
 
 class LValue : public ASTNode {
-public:
+ public:
   std::string identifier;
   LValue(std::string identifier) : identifier(std::move(identifier)) {}
 };
