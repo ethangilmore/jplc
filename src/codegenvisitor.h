@@ -73,7 +73,11 @@ class CodeGenVisitor : public ASTVisitor {
   }
 
   virtual void visit(const VarExpr& expr) override {
-    expr.symbol = var_map.at(expr.identifier);
+    if (var_map.count(expr.identifier)) {
+      expr.symbol = var_map.at(expr.identifier);
+    } else {
+      expr.symbol = "?";
+    }
   }
 
   virtual void visit(const ArrayLiteralExpr& expr) override {
