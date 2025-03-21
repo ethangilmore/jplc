@@ -20,6 +20,8 @@ class CodeGenVisitor : public ASTVisitor {
     type_def_generator->visit(program);
     function_generator->visit(program);
 
+    var_map.insert({"args", "args"});
+
     std::cout << "void jpl_main(struct args args) {\n";
     reset_name_ctr();
     ASTVisitor::visit(program);
