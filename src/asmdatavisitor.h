@@ -75,6 +75,6 @@ class ASMDataVisitor : public ASTVisitor {
   }
 
  private:
-  int ctr;
+  int ctr = 0;
   std::shared_ptr<Context> ctx;
 };

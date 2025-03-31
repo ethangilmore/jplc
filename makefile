@@ -4,7 +4,7 @@ SRCS = $(shell find src -name '*.cpp')
 OBJS = $(SRCS:src/%.cpp=build/%.o)
 EXEC = build/jpl
 TEST = test.jpl
-FLAGS = "-i"
+FLAGS = "-s"
 
 all: run
 
