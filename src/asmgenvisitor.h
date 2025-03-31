@@ -16,8 +16,10 @@
 class Stack {
  public:
   int size = 0;
+  int local_var_size = 0;
   std::stack<std::optional<std::shared_ptr<ResolvedType>>> shadow;
   std::stack<int> padding;
+  std::map<std::string, int> variables;
 
   std::shared_ptr<ResolvedType> top() {
     return *shadow.top();
@@ -52,12 +54,6 @@ class Stack {
     padding.push(leftovers);
     shadow.push(std::nullopt);
     return leftovers;
-    // padding.push(size);
-    // size += size;
-    // if (size != 0) {
-    //   shadow.push(std::nullopt);
-    // }
-    // return size;
   }
 
   int unalign() {
@@ -76,6 +72,17 @@ class Stack {
       shadow.pop();
     }
     shadow.push(type);
+  }
+
+  void add_lvalue(LValue* lvalue) {
+    auto base = size - 8;
+    variables[lvalue->identifier] = base;
+    if (auto array_lvalue = dynamic_cast<ArrayLValue*>(lvalue)) {
+      for (const auto& name : array_lvalue->indices) {
+        variables[name] = base;
+        base -= 8;
+      }
+    }
   }
 };
 
@@ -144,13 +151,23 @@ class ASMGenVisitor : public ASTVisitor {
     const_map = data_visitor.const_map;
     fn_visitor.visit(program);
     std::cout << "\nsection .text\njpl_main:\n_jpl_main:\n";
-    push("rbp", Int::shared);
+    print("push rbp");
+    // push("rbp", Int::shared);
     print("mov rbp, rsp");
-    push("r12", Int::shared);
-    print("mov r12, rbp ; end of jpl_main prelude");
+    print("push r12");
+    // push("r12", Int::shared);
+    print("mov r12, rbp");
+    stack.size = 16;
+    print("; === END OF PRELUDE ===\n");
     ASTVisitor::visit(program);
-    pop("r12", "begin jpl_main postlude");
-    pop("rbp");
+    if (stack.local_var_size) {
+      print("add rsp, ", stack.local_var_size, " ; local vars");
+    }
+    print("\n    ; === START OF POSTLUDE ===");
+    // pop("r12");
+    // pop("rbp");
+    print("pop r12");
+    print("pop rbp");
     print("ret");
   }
 
@@ -290,12 +307,8 @@ class ASMGenVisitor : public ASTVisitor {
   }
 
   virtual void visit(const ArrayLiteralExpr& expr) override {
-    // align(8);
     print("; in reverse order, generate code for EXPRs");
     ASTVisitor::visit(expr);
-    // for (int i = expr.elements.size() - 1; i >= 0; i--) {
-    //   expr.elements[i]->accept(*this);
-    // }
     auto element_size = expr.type->as<Array>()->element_type->size();
     auto size = expr.elements.size() * element_size;
     print("mov rdi, ", size);
@@ -304,8 +317,6 @@ class ASMGenVisitor : public ASTVisitor {
     unalign();
     print("; copy data from rsp to rax");
     for (int i = size - 8; i >= 0; i -= 8) {
-      // for (int i = expr.elements.size() - 1; i >= 0; i -= 1) {
-      // auto offset = i * 8;  // element_size;
       print("mov r10, [rsp + ", i, "]");
       print("mov [rax + ", i, "], r10");
     }
@@ -314,12 +325,30 @@ class ASMGenVisitor : public ASTVisitor {
     for (const auto& _ : expr.elements) {
       stack.pop();
     }
-    // stack.size -= element_size + expr.elements.size();
     push("rax", Int::shared);
     print("mov rax, ", expr.elements.size());
     push("rax", Int::shared);
     stack.recharacterize(2, expr.type);
-    // unalign();
+  }
+
+  virtual void visit(const LetCmd& cmd) override {
+    ASTVisitor::visit(cmd);
+    stack.local_var_size += cmd.expr->type->size();
+    stack.add_lvalue(cmd.lvalue.get());
+  }
+
+  virtual void visit(const VarExpr& expr) override {
+    auto start = stack.variables[expr.identifier];
+    // allocate type on stack
+    stack.shadow.push(expr.type);
+    stack.size += expr.type->size();
+    print("sub rsp, ", expr.type->size());
+
+    // copy data to rsp from rsp - [position on stack]
+    for (int i = expr.type->size() - 8; i >= 0; i -= 8) {
+      print("mov r10, [rbp - ", start, " + ", i, "]");
+      print("mov [rsp + ", i, "], r10");
+    }
   }
 
   virtual void visit(const ShowCmd& cmd) override {
