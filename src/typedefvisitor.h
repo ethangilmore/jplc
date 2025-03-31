@@ -59,6 +59,19 @@ class TypeDefGenerator : public ASTVisitor {
     created_types.insert(type);
   }
 
+  virtual void visit(const ArrayLoopExpr& expr) override {
+    ASTVisitor::visit(expr);
+    if (!created_types.count(expr.type->c_type())) {
+      std::cout << "typedef struct {\n";
+      for (size_t i = 0; i < expr.axis.size(); i++) {
+        std::cout << "  int64_t d" + std::to_string(i) + ";\n";
+      }
+      std::cout << "  " + expr.expr->type->c_type() + " *data;\n";
+      std::cout << "} " + expr.type->c_type() + ";\n\n";
+    }
+    created_types.insert(expr.type->c_type());
+  }
+
  private:
   std::unordered_set<std::string> created_types;
   std::shared_ptr<Context> ctx;

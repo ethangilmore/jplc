@@ -12,6 +12,8 @@ std::string Int::c_type() {
   return "int64_t";
 }
 
+std::shared_ptr<Int> Int::shared = std::make_shared<Int>();
+
 std::string Float::to_string() {
   return "(FloatType)";
 }
@@ -19,6 +21,8 @@ std::string Float::to_string() {
 std::string Float::c_type() {
   return "double";
 }
+
+std::shared_ptr<Float> Float::shared = std::make_shared<Float>();
 
 std::string Bool::to_string() {
   return "(BoolType)";
@@ -28,6 +32,8 @@ std::string Bool::c_type() {
   return "bool";
 }
 
+std::shared_ptr<Bool> Bool::shared = std::make_shared<Bool>();
+
 std::string Void::to_string() {
   return "(VoidType)";
 }
@@ -35,6 +41,8 @@ std::string Void::to_string() {
 std::string Void::c_type() {
   return "void_t";
 }
+
+std::shared_ptr<Void> Void::shared = std::make_shared<Void>();
 
 Array::Array(std::shared_ptr<ResolvedType> element_type, size_t rank) : element_type(element_type), rank(rank) {}
 
@@ -48,6 +56,10 @@ std::string Array::c_type() {
 
 std::string Array::show_type(Context* ctx) {
   return "(ArrayType " + element_type->show_type(ctx) + " " + std::to_string(rank) + ")";
+}
+
+int Array::size() {
+  return 8 + (rank * 8);
 }
 
 Struct::Struct(std::string name) : name(name) {}

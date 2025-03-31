@@ -77,8 +77,8 @@ void ASTVisitor::visit(const VarExpr &node) {}
 void ASTVisitor::visit(const VoidExpr &node) {}
 
 void ASTVisitor::visit(const ArrayLiteralExpr &node) {
-  for (const auto &element : node.elements) {
-    element->accept(*this);
+  for (int i = node.elements.size() - 1; i >= 0; i--) {
+    node.elements[i]->accept(*this);
   }
 }
 
@@ -124,8 +124,8 @@ void ASTVisitor::visit(const IfExpr &node) {
 }
 
 void ASTVisitor::visit(const BinopExpr &node) {
-  node.left->accept(*this);
   node.right->accept(*this);
+  node.left->accept(*this);
 }
 
 void ASTVisitor::visit(const UnopExpr &node) {

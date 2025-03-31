@@ -13,6 +13,7 @@ class ResolvedType {
   virtual std::string to_string() = 0;
   virtual std::string c_type() = 0;
   virtual std::string show_type(Context* ctx) { return to_string(); };
+  virtual int size() { return 8; }
 
   bool operator==(const ResolvedType& other) const {
     return typeid(*this) == typeid(other);
@@ -37,21 +38,29 @@ class ResolvedType {
 };
 
 class Int : public ResolvedType {
+ public:
+  static std::shared_ptr<Int> shared;
   virtual std::string to_string() override;
   virtual std::string c_type() override;
 };
 
 class Float : public ResolvedType {
+ public:
+  static std::shared_ptr<Float> shared;
   virtual std::string to_string() override;
   virtual std::string c_type() override;
 };
 
 class Bool : public ResolvedType {
+ public:
+  static std::shared_ptr<Bool> shared;
   virtual std::string to_string() override;
   virtual std::string c_type() override;
 };
 
 class Void : public ResolvedType {
+ public:
+  static std::shared_ptr<Void> shared;
   virtual std::string to_string() override;
   virtual std::string c_type() override;
 };
@@ -70,6 +79,7 @@ class Array : public ResolvedType {
   virtual std::string to_string() override;
   virtual std::string c_type() override;
   virtual std::string show_type(Context* ctx) override;
+  virtual int size() override;
   Array(std::shared_ptr<ResolvedType> element_type, size_t rank);
   std::shared_ptr<ResolvedType> element_type;
   size_t rank;

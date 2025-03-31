@@ -1,7 +1,9 @@
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <vector>
 
+#include "asmgenvisitor.h"
 #include "codegenvisitor.h"
 #include "lexer.h"
 #include "logger.h"
@@ -14,6 +16,8 @@ struct Options {
   std::string input;
   bool lex;
   bool parse;
+  bool c;
+  bool assembly;
   bool typecheck;
 };
 
@@ -37,6 +41,8 @@ int main(int argc, char *argv[]) {
       .input = args[0],
       .lex = std::find(args.begin(), args.end(), "-l") != args.end(),
       .parse = std::find(args.begin(), args.end(), "-p") != args.end(),
+      .c = std::find(args.begin(), args.end(), "-i") != args.end(),
+      .assembly = std::find(args.begin(), args.end(), "-s") != args.end(),
       .typecheck = std::find(args.begin(), args.end(), "-t") != args.end(),
   };
 
@@ -68,9 +74,15 @@ int main(int argc, char *argv[]) {
     std::cout << "\nCompilation succeeded" << std::endl;
     exit(0);
   }
-  // TypeDefGenerator generator(typechecker.ctx, logger);
-  CodeGenVisitor generator(typechecker.ctx, logger);
-  program->accept(generator);
-  std::cout << "\nCompilation succeeded" << std::endl;
-  exit(0);
+  if (options.c) {
+    CodeGenVisitor generator(typechecker.ctx, logger);
+    program->accept(generator);
+    std::cout << "\nCompilation succeeded" << std::endl;
+    exit(0);
+  } else if (options.assembly) {
+    ASMGenVisitor generator(typechecker.ctx, logger);
+    program->accept(generator);
+    std::cout << "\nCompilation succeeded" << std::endl;
+    exit(0);
+  }
 }

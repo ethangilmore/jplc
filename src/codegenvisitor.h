@@ -211,13 +211,9 @@ class CodeGenVisitor : public ASTVisitor {
     println(type + " " + symbol + " = " + expr.identifier + args + ";");
   }
 
-  virtual void visit(const SumLoopExpr& expr) override {
+  virtual void visit(const ArrayLoopExpr& expr) override {
     auto symbol = expr.symbol = gensym();
-    if (expr.expr->type->is<Int>()) {
-      println("int64_t " + symbol + ";");
-    } else {
-      println("double " + symbol + ";");
-    }
+    println(expr.type->c_type() + " " + symbol + ";");
     for (const auto& [name, limit] : expr.axis) {
       limit->accept(*this);
       println("if (" + limit->symbol + " > 0)");
@@ -226,7 +222,16 @@ class CodeGenVisitor : public ASTVisitor {
       println("fail_assertion(\"non-positive loop bound\");");
       println(label + ":;");
     }
-    println(symbol + " = 0;");
+    auto size = gensym();
+    println("int64_t " + size + " = 1;");
+    println(size + " *= 1;");
+    if (expr.expr->type->is<Int>()) {
+      println(size + " *= sizeof(int64_t);");
+    } else {
+      println(size + " *= sizeof(double);");
+    }
+    println(symbol + ".data = jpl_alloc(" + size + ");");
+
     std::vector<std::string> symbols{};
     for (int i = expr.axis.size() - 1; i >= 0; --i) {
       auto symbol = gensym();
@@ -248,7 +253,7 @@ class CodeGenVisitor : public ASTVisitor {
     }
   }
 
-  virtual void visit(const ArrayLoopExpr& expr) override {
+  virtual void visit(const SumLoopExpr& expr) override {
     auto symbol = expr.symbol = gensym();
     if (expr.expr->type->is<Int>()) {
       println("int64_t " + symbol + ";");
