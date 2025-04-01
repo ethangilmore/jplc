@@ -11,5 +11,5 @@ void ASMFnVisitor::visit(const Program& program) {
 
 void ASMFnVisitor::visit(const FnCmd& fn) {
   // TODO: function stuff
-  asm_visitor.visit(fn);
+  asm_visitor.fn(fn);
 }

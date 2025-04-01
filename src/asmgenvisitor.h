@@ -29,6 +29,7 @@ class Stack {
     auto s = type->size();
     size += s;
     shadow.push(type);
+    // std::cout << "push: stack now has " << shadow.size() << " things on it\n";
     return s;
   }
 
@@ -41,6 +42,7 @@ class Stack {
     auto type = *shadow.top();
     size -= type->size();
     shadow.pop();
+    // std::cout << "pop: stack now has " << shadow.size() << " things on it\n";
     return type;
   }
 
@@ -53,6 +55,7 @@ class Stack {
     size += leftovers;
     padding.push(leftovers);
     shadow.push(std::nullopt);
+    // std::cout << "align: stack now has " << shadow.size() << " things on it\n";
     return leftovers;
   }
 
@@ -61,8 +64,12 @@ class Stack {
     padding.pop();
     size -= p;
     if (p != 0) {
+      if (shadow.top()) {
+        std::cout << "uh oh we're trying to unalign but theres data instead of padding\n";
+      }
       shadow.pop();
     }
+    // std::cout << "unalign: stack now has " << shadow.size() << " things on it\n";
     return p;
   }
 
@@ -75,7 +82,7 @@ class Stack {
   }
 
   void add_lvalue(LValue* lvalue) {
-    auto base = size - 8;
+    auto base = size - 8;  // rbp is 8 below the size of our stack so we subract 8 to get the offset from rbp
     variables[lvalue->identifier] = base;
     if (auto array_lvalue = dynamic_cast<ArrayLValue*>(lvalue)) {
       for (const auto& name : array_lvalue->indices) {
@@ -84,6 +91,70 @@ class Stack {
       }
     }
   }
+};
+
+struct StackArg {
+  // int size;
+  int offset;
+  std::shared_ptr<ResolvedType> type;
+};
+
+class CallingConvention {
+ public:
+  inline static const std::vector<std::string> all_int_regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+  inline static const std::vector<std::string> all_float_regs = {"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8"};
+
+  std::vector<std::variant<std::string, int>> args{};
+  std::variant<std::string, int> ret;
+  std::vector<std::string> int_regs{};
+  std::vector<std::string> float_regs{};
+  std::vector<StackArg> stack_args{};
+  std::variant<std::string, StackArg> return_position;
+  int total_stack = 0;
+
+  CallingConvention(const FnInfo& fn) : fn(fn) {
+    auto int_count = 0, float_count = 0, offset = 0;
+
+    // params
+    for (const auto& type : fn.param_types) {
+      if (type->is<Int>()) {
+        if (int_count < all_int_regs.size()) {
+          args.push_back(all_int_regs[int_count++]);
+          int_regs.push_back(all_int_regs[int_count++]);
+        } else {
+          args.push_back(offset);
+          stack_args.push_back({offset, type});
+          offset += type->size();
+          total_stack += type->size();
+        }
+      } else if (type->is<Float>()) {
+        if (float_count < all_float_regs.size()) {
+          args.push_back(all_float_regs[float_count++]);
+          float_regs.push_back(all_float_regs[float_count++]);
+        } else {
+          args.push_back(offset);
+          stack_args.push_back({offset, type});
+          offset += type->size();
+          total_stack += type->size();
+        }
+      }
+    }
+
+    // return
+    if (fn.return_type->is<Int>() || fn.return_type->is<Bool>()) {
+      ret = "rax";
+      return_position = "rax";
+    } else if (fn.return_type->is<Float>()) {
+      ret = "xmm0";
+      return_position = "xmm0";
+    } else if (fn.return_type->is<Array>()) {
+      ret = 0;                       // also idk
+      return_position = StackArg();  // idk
+    }
+  }
+
+ private:
+  const FnInfo& fn;
 };
 
 class ASMGenVisitor : public ASTVisitor {
@@ -150,12 +221,12 @@ class ASMGenVisitor : public ASTVisitor {
     data_visitor.visit(program);
     const_map = data_visitor.const_map;
     fn_visitor.visit(program);
-    std::cout << "\nsection .text\njpl_main:\n_jpl_main:\n";
-    print("push rbp");
-    // push("rbp", Int::shared);
+    std::cout << "jpl_main:\n_jpl_main:\n";
+    // print("push rbp");
+    push("rbp", Int::shared);
     print("mov rbp, rsp");
-    print("push r12");
-    // push("r12", Int::shared);
+    // print("push r12");
+    push("r12", Int::shared);
     print("mov r12, rbp");
     stack.size = 16;
     print("; === END OF PRELUDE ===\n");
@@ -172,6 +243,51 @@ class ASMGenVisitor : public ASTVisitor {
   }
 
   virtual void visit(const FnCmd& fn) override {}
+
+  void fn(const FnCmd& fn) {
+    auto calling_convention = CallingConvention(*ctx->lookup<FnInfo>(fn.identifier));
+    auto ret_reg = std::get_if<int>(&calling_convention.ret);
+    auto prev_stack = stack;
+    stack = Stack();
+
+    std::cout << fn.identifier << ":\n";
+    std::cout << "_" << fn.identifier << ":\n";
+    push("rbp", Int::shared);
+    print("mov rbp, rsp");
+    print("; === END OF PRELUDE ===\n");
+
+    if (ret_reg) {
+      push("rdi", Int::shared);
+      stack.variables["$return"] = stack.size - 8;
+    }
+
+    ASTVisitor::visit(fn);
+
+    print("add rsp, ", stack.size - 8, " ; local variables");
+    pop("rbp");
+    print("ret");
+    std::cout << "\n";
+
+    stack = prev_stack;
+  }
+
+  virtual void visit(const ReturnStmt& stmt) override {
+    ASTVisitor::visit(stmt);
+    auto type = stmt.expr->type;
+    if (type->is<Int>() || type->is<Bool>()) {
+      pop("rax");
+    } else if (type->is<Float>()) {
+      pop("xmm0");
+    } else {
+      auto offset = stack.variables["$return"];
+      print("mov rax, [rbp - ", offset, "]");
+      // copy data from rsp to rax
+      for (int i = type->size() - 8; i >= 0; i -= 8) {
+        print("mov r10, [rsp + ", i, "]");
+        print("mov [rax + ", i, "], r10");
+      }
+    }
+  }
 
   virtual void visit(const IntExpr& expr) override {
     push_const(expr.value, Int::shared);
@@ -337,17 +453,60 @@ class ASMGenVisitor : public ASTVisitor {
     stack.add_lvalue(cmd.lvalue.get());
   }
 
+  virtual void visit(const LetStmt& cmd) override {
+    ASTVisitor::visit(cmd);
+    stack.local_var_size += cmd.expr->type->size();
+    stack.add_lvalue(cmd.lvalue.get());
+  }
+
   virtual void visit(const VarExpr& expr) override {
     auto start = stack.variables[expr.identifier];
     // allocate type on stack
     stack.shadow.push(expr.type);
     stack.size += expr.type->size();
-    print("sub rsp, ", expr.type->size());
+    print("sub rsp, ", expr.type->size(), " ; make space to copy var expr");
 
     // copy data to rsp from rsp - [position on stack]
     for (int i = expr.type->size() - 8; i >= 0; i -= 8) {
       print("mov r10, [rbp - ", start, " + ", i, "]");
       print("mov [rsp + ", i, "], r10");
+    }
+  }
+
+  virtual void visit(const CallExpr& expr) override {
+    auto info = ctx->lookup<FnInfo>(expr.identifier);
+
+    // make calling convention
+    auto convention = CallingConvention(*info);
+    auto ret_reg = std::get_if<std::string>(&convention.ret);
+
+    // prepare stack
+    if (!ret_reg) {
+      print("sub rsp, ", info->return_type->size());
+      auto ret_offset = std::get<int>(convention.ret);
+      auto offset = stack.size - ret_offset + stack.padding.top();
+      print("lea rdi, [rsp + ", offset, "]");
+    }
+
+    // generate code for args
+
+    // do call
+    if (ret_reg) {
+      align(8);
+    } else {
+      align(info->return_type->size() + 8);
+      stack.shadow.push(info->return_type);
+    }
+    print("call _", info->name);
+
+    // free stack args one-by-one
+
+    // unalign stack
+    unalign();
+
+    // if return val is in a register, push to a stack
+    if (ret_reg) {
+      push(*ret_reg, info->return_type);
     }
   }
 
@@ -359,7 +518,8 @@ class ASMGenVisitor : public ASTVisitor {
     print("lea rsi, [rsp]");
     print("call _show");
     // free self.stack by sizeof EXPR_TYPE
-    print("add rsp, ", type->size());
+    print("add rsp, ", type->size(), " ; free stack by sizeof expr");
+    // stack.size -= type->size();
     stack.pop();
     unalign();
   }

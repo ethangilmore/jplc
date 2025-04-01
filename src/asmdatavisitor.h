@@ -21,6 +21,7 @@ class ASMDataVisitor : public ASTVisitor {
     std::cout << std::fixed << std::setprecision(15);
     std::cout << "section .data\n";
     ASTVisitor::visit(program);
+    std::cout << "\nsection .text\n";
   }
 
   virtual void visit(const IntExpr& expr) override {
