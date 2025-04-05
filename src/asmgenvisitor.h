@@ -117,7 +117,7 @@ class CallingConvention {
 
     // params
     for (const auto& type : fn.param_types) {
-      if (type->is<Int>()) {
+      if (type->is<Int>() || type->is<Float>()) {
         if (int_count < all_int_regs.size()) {
           args.push_back(all_int_regs[int_count++]);
           int_regs.push_back(all_int_regs[int_count++]);
@@ -250,19 +250,43 @@ class ASMGenVisitor : public ASTVisitor {
     auto prev_stack = stack;
     stack = Stack();
 
+    // make a new function
     std::cout << fn.identifier << ":\n";
     std::cout << "_" << fn.identifier << ":\n";
+
+    // save and udpate rbp
     push("rbp", Int::shared);
     print("mov rbp, rsp");
     print("; === END OF PRELUDE ===\n");
 
+    // if return val goes on stack
     if (ret_reg) {
       push("rdi", Int::shared);
       stack.variables["$return"] = stack.size - 8;
     }
 
+    // recieve args
+    for (int i = 0; i < fn.params.size(); i++) {
+      auto identifier = fn.params[i]->lvalue->identifier;
+      auto type = fn.params[i]->type->type;
+      auto position = calling_convention.args[i];
+      if (auto arg_offset = std::get_if<int>(&position)) {
+        // stack arg
+        auto offset = stack.size - *arg_offset + 16;
+        stack.add_lvalue(fn.params[i]->lvalue.get());
+      } else if (auto reg = std::get_if<std::string>(&position)) {
+        // register
+        push(*reg, type);
+        stack.add_lvalue(fn.params[i]->lvalue.get());
+      }
+    }
+
+    // process stmts
     ASTVisitor::visit(fn);
 
+    // add implicit return, if needed
+
+    // this is some return stuff, idk if it should go here
     print("add rsp, ", stack.size - 8, " ; local variables");
     pop("rbp");
     print("ret");
@@ -485,18 +509,40 @@ class ASMGenVisitor : public ASTVisitor {
       print("sub rsp, ", info->return_type->size());
       auto ret_offset = std::get<int>(convention.ret);
       auto offset = stack.size - ret_offset + stack.padding.top();
-      print("lea rdi, [rsp + ", offset, "]");
+      print("lea rdi, [rsp + 0]");  //, offset, "]");
     }
-
-    // generate code for args
-
-    // do call
     if (ret_reg) {
       align(8);
     } else {
       align(info->return_type->size() + 8);
       stack.shadow.push(info->return_type);
     }
+
+    // generate code for args
+    for (int i = expr.args.size() - 1; i >= 0; i--) {
+      // stack args right to left
+      if (std::get_if<int>(&convention.args[i])) {
+        print("; generating expr for stack arg");
+        expr.args[i]->accept(*this);
+        stack.size += expr.args[i]->type->size();
+      }
+    }
+    for (int i = expr.args.size() - 1; i >= 0; i--) {
+      // register args right to left
+      print("; generating expr for register arg");
+      if (std::get_if<std::string>(&convention.args[i])) {
+        expr.args[i]->accept(*this);
+      }
+    }
+    for (const auto& arg : convention.args) {
+      // pop register args to their registers
+      print("; popping register arg to register");
+      if (auto reg = std::get_if<std::string>(&arg)) {
+        pop(*reg);
+      }
+    }
+
+    // do call
     print("call _", info->name);
 
     // free stack args one-by-one
