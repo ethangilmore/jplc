@@ -8,6 +8,7 @@
 
 #include "asmdatavisitor.h"
 #include "asmfnvisitor.h"
+#include "astnodes.h"
 #include "astvisitor.h"
 #include "context.h"
 #include "logger.h"
@@ -43,6 +44,14 @@ class Stack {
     size -= type->size();
     shadow.pop();
     // std::cout << "pop: stack now has " << shadow.size() << " things on it\n";
+    return type;
+  }
+
+  std::shared_ptr<ResolvedType> pop(std::shared_ptr<ResolvedType> expected) {
+    auto type = pop();
+    if (*type != *expected) {
+      throw std::runtime_error("Expected to pop " + expected->to_string() + ", but got " + type->to_string());
+    }
     return type;
   }
 
@@ -90,6 +99,11 @@ class Stack {
         base -= 8;
       }
     }
+  }
+
+  void add_lvalue(std::string identifier) {
+    auto base = size - 8;  // rbp is 8 below the size of our stack so we subract 8 to get the offset from rbp
+    variables[identifier] = base;
   }
 };
 
@@ -216,7 +230,45 @@ class ASMGenVisitor : public ASTVisitor {
     print("lea ", reg, ", [rel ", const_map[val], "]");
   }
 
+  void copy(int size, std::string from, std::string to) {
+    for (int i = size - 8; i >= 0; i -= 8) {
+      print("mov r10, [", from, " + ", i, "]");
+      print("mov [", to, " + ", i, "], r10");
+    }
+  }
+
+  void asm_alloc(std::shared_ptr<ResolvedType> type) {
+    print("sub rsp, ", type->size());
+    stack.push(type);
+  }
+
+  void asm_free(std::shared_ptr<ResolvedType> type) {
+    print("add rsp, ", type->size());
+    stack.pop(type);
+  }
+
+  void asm_free(int n, std::shared_ptr<ResolvedType> type) {
+    print("add rsp, ", n * type->size());
+    for (int i = 0; i < n; i++) {
+      stack.pop(type);
+    }
+  }
+
+  void asm_assert(std::string cmd, std::string msg) {
+    print("; begin assert call for '", msg, "'");
+    auto label = genlabel();
+    print(cmd, " ", label);
+    align(8);
+    read_const("rdi", msg);
+    print("call _fail_assertion");
+    unalign();
+    print(label, ":");
+    print("; end assert call");
+  }
+
   virtual void visit(const Program& program) override {
+    stack.variables["argnum"] = -16;
+    stack.variables["args"] = -16;
     std::cout << header;
     data_visitor.visit(program);
     const_map = data_visitor.const_map;
@@ -228,7 +280,7 @@ class ASMGenVisitor : public ASTVisitor {
     // print("push r12");
     push("r12", Int::shared);
     print("mov r12, rbp");
-    stack.size = 16;
+    // stack.size = 16;
     print("; === END OF PRELUDE ===\n");
     ASTVisitor::visit(program);
     if (stack.local_var_size) {
@@ -556,6 +608,118 @@ class ASMGenVisitor : public ASTVisitor {
     }
   }
 
+  virtual void visit(const IfExpr& expr) override {
+    expr.condition->accept(*this);
+    pop("rax");
+    print("cmp rax, 0");
+    auto else_label = genlabel();
+    auto end_label = genlabel();
+    print("je ", else_label);
+    expr.if_expr->accept(*this);
+    stack.pop();
+    print("jmp ", end_label);
+    print(else_label, ":");
+    expr.else_expr->accept(*this);
+    print(end_label, ":");
+  }
+
+  virtual void visit(const ArrayIndexExpr& expr) override {
+    print();
+    print("; begin array index expr");
+    expr.expr->accept(*this);
+    auto type = expr.expr->type->as<Array>();
+    auto gap = type->rank;
+
+    // generate code for IDX, reversed
+    for (int i = expr.indices.size() - 1; i >= 0; i--) {
+      expr.indices[i]->accept(*this);
+    }
+
+    // for each IDX_K
+    for (int k = 0; k < type->rank; k++) {
+      print("mov rax, [rsp + ", k * 8, "] ; here");
+      print("cmp rax, 0");
+      asm_assert("jge", "negative array index");
+      print("cmp rax, [rsp + ", (k + gap) * 8, "] ; here");
+      asm_assert("jl", "index too large");
+    }
+
+    // genereate indexing code
+    auto offset = 0;
+    print("mov rax, 0");
+    for (int i = 0; i < expr.indices.size(); i++) {
+      print("imul rax, [rsp + ", offset + i * 8 + gap * 8, "]");
+      print("add rax, [rsp + ", offset + i * 8, "]");
+    }
+    print("imul rax, ", type->element_type->size());
+    print("add rax, [rsp + ", offset + expr.indices.size() * 8 + gap * 8, "]");
+
+    // stack cleanup stuff
+    for (const auto& index : expr.indices) {
+      asm_free(index->type);
+      // stack.pop(index->type);  // free
+    }
+    asm_free(expr.expr->type);
+    // stack.pop(expr.expr->type);  // free
+    asm_alloc(type->element_type);
+    copy(type->element_type->size(), "rax", "rsp");
+    print("; stack.alloc(ELEM_TYPE)");
+  }
+
+  virtual void visit(const SumLoopExpr& expr) override {
+    print();
+    print("; begin sum loop expr");
+
+    // 1/4
+    auto num_e = expr.axis.size();
+    asm_alloc(expr.type);
+    for (int i = num_e - 1; i >= 0; i--) {
+      expr.axis[i].second->accept(*this);
+      // check bounds step-by-step
+      print("mov rax, [rsp]");
+      print("cmp rax, 0");
+      asm_assert("jg", "non-positive loop bound");
+    }
+    print("mov rax, 0 ; init sum");
+    print("mov [rsp + ", num_e * 8, "], rax ; move to pre-alloc");
+    for (int i = num_e - 1; i >= 0; i--) {
+      const auto& [identifier, e] = expr.axis[i];
+      print("mov rax, 0");
+      push("rax", Int::shared);
+      stack.add_lvalue(identifier);
+    }
+
+    // 2/4
+    auto jump_label = genlabel();
+    print(jump_label, ":");
+    expr.expr->accept(*this);
+    if (expr.expr->type->is<Int>()) {
+      pop("rax");
+      print("add [rsp + ", 2 * num_e * 8, "], rax");
+    } else {
+      pop("xmm0");
+      print("addsd xmm0, [rsp + ", 2 * num_e * 8, "]");
+      print("movsd [rsp + ", 2 * num_e * 8, "], xmm0");
+    }
+
+    // 3/4
+    print("add qword [rsp + ", (num_e - 1) * 8, "], 1");
+    for (int i = num_e - 1; i >= 0; i--) {
+      print("mov rax, [rsp + ", i * 8, "]");
+      print("cmp rax, [rsp + ", (i + num_e) * 8, "]");
+      print("jl ", jump_label);
+      // if something
+      if (i > 0) {
+        print("mov qword [rsp + ", i * 8, "], 0");
+        print("add qword [rsp + ", (i - 1) * 8, "], 1");
+      }
+    }
+
+    // 4/4
+    asm_free(num_e, Int::shared);
+    asm_free(num_e, Int::shared);
+  }
+
   virtual void visit(const ShowCmd& cmd) override {
     auto type = cmd.expr->type;
     align(type->size() + 8);  // call pushes return address
@@ -568,6 +732,72 @@ class ASMGenVisitor : public ASTVisitor {
     // stack.size -= type->size();
     stack.pop();
     unalign();
+  }
+
+  virtual void visit(const ArrayLoopExpr& expr) override {
+    print();
+    print("; begin array loop expr");
+
+    // 1/4
+    auto num_e = expr.axis.size();
+    asm_alloc(Int::shared);
+    for (int i = num_e - 1; i >= 0; i--) {
+      expr.axis[i].second->accept(*this);
+      // check bounds step-by-step
+      print("mov rax, [rsp]");
+      print("cmp rax, 0");
+      asm_assert("jg", "non-positive loop bound");
+    }
+    print("mov rdi, ", expr.expr->type->size());
+    for (int i = 0; i < num_e; i++) {
+      print("imul rdi, [rsp + ", i * 8, "]");
+      asm_assert("jno", "overflow computing array size");
+    }
+    align(8);
+    print("call _jpl_alloc");
+    unalign();
+    print("mov [rsp + ", num_e * 8, "], rax ; move to pre-alloc");
+    for (int i = num_e - 1; i >= 0; i--) {
+      const auto& [identifier, e] = expr.axis[i];
+      print("mov rax, 0");
+      push("rax", Int::shared);
+      stack.add_lvalue(identifier);
+    }
+
+    // 2/4
+    auto jump_label = genlabel();
+    print(jump_label, ":");
+    expr.expr->accept(*this);
+    auto offset = expr.expr->type->size();
+
+    // generate index for result
+    print("mov rax, 0");
+    for (int i = 0; i < num_e; i++) {
+      print("imul rax, [rsp + ", offset + (num_e + i) * 8, "]");
+      print("add rax, [rsp + ", offset + i * 8, "]");
+    }
+    print("imul rax, ", offset);
+    print("add rax, [rsp + ", offset + 2 * num_e * 8, "]");
+
+    copy(offset, "rsp", "rax");
+    asm_free(expr.expr->type);
+
+    // 3/4
+    print("add qword [rsp + ", (num_e - 1) * 8, "], 1");
+    for (int i = num_e - 1; i >= 0; i--) {
+      print("mov rax, [rsp + ", i * 8, "]");
+      print("cmp rax, [rsp + ", (i + num_e) * 8, "]");
+      print("jl ", jump_label);
+      // if something
+      if (i > 0) {
+        print("mov qword [rsp + ", i * 8, "], 0");
+        print("add qword [rsp + ", (i - 1) * 8, "], 1");
+      }
+    }
+
+    // 4/4
+    asm_free(num_e, Int::shared);
+    stack.recharacterize(num_e + 1, expr.type);
   }
 
  private:

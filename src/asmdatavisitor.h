@@ -15,7 +15,7 @@ class ASMDataVisitor : public ASTVisitor {
  public:
   std::map<asmval, std::string> const_map;
 
-  ASMDataVisitor(std::shared_ptr<Context> ctx) : ctx(ctx){};
+  ASMDataVisitor(std::shared_ptr<Context> ctx) : ctx(ctx) {};
 
   virtual void visit(const Program& program) override {
     std::cout << std::fixed << std::setprecision(15);
@@ -47,6 +47,32 @@ class ASMDataVisitor : public ASTVisitor {
     } else if (expr.op == "%" && expr.type->is<Int>()) {
       add_string("mod by zero");
     }
+  }
+
+  virtual void visit(const ArrayIndexExpr& expr) override {
+    expr.expr->accept(*this);
+    for (int i = expr.indices.size() - 1; i >= 0; i--) {
+      expr.indices[i]->accept(*this);
+    }
+    add_string("negative array index");
+    add_string("index too large");
+  }
+
+  virtual void visit(const SumLoopExpr& expr) override {
+    for (int i = expr.axis.size() - 1; i >= 0; i--) {
+      expr.axis[i].second->accept(*this);
+      add_string("non-positive loop bound");
+    }
+    expr.expr->accept(*this);
+  }
+
+  virtual void visit(const ArrayLoopExpr& expr) override {
+    for (int i = expr.axis.size() - 1; i >= 0; i--) {
+      expr.axis[i].second->accept(*this);
+      add_string("non-positive loop bound");
+    }
+    add_string("overflow computing array size");
+    expr.expr->accept(*this);
   }
 
   virtual void visit(const ShowCmd& cmd) override {
