@@ -411,9 +411,35 @@ class ASMGenVisitor : public ASTVisitor {
 
   void int_binop(const BinopExpr& expr) {
     std::map<std::string, std::string> bool_ops = {{"<", "setl"}, {">", "setg"}, {"<=", "setle"}, {">=", "setge"}, {"==", "sete"}, {"!=", "setne"}};
-    ASTVisitor::visit(expr);
-    pop("rax");
-    pop("r10");
+    auto left_int_const = dynamic_cast<const IntExpr*>(expr.left.get());
+    auto right_int_const = dynamic_cast<const IntExpr*>(expr.right.get());
+    auto left_shl_opt = opt > 0 && expr.op == "*" && left_int_const && log_2(left_int_const->value) >= 0;
+    auto right_shl_opt = opt > 0 && expr.op == "*" && right_int_const && log_2(right_int_const->value) >= 0;
+
+    if (left_shl_opt) {
+      print("; optimizing left constant into shift");
+      expr.right->accept(*this);
+      if (log_2(left_int_const->value) > 0) {
+        pop("rax");
+        print("shl rax, ", log_2(left_int_const->value));
+        push("rax", expr.right->type);
+      }
+      return;
+    } else if (right_shl_opt) {
+      print("; optimizing right constant into shift");
+      expr.left->accept(*this);
+      if (log_2(right_int_const->value) > 0) {
+        pop("rax");
+        print("shl rax, ", log_2(right_int_const->value));
+        push("rax", expr.left->type);
+      }
+      return;
+    } else {
+      ASTVisitor::visit(expr);
+      pop("rax");
+      pop("r10");
+    }
+
     if (bool_ops.find(expr.op) != bool_ops.end()) {
       print("cmp rax, r10");
       print(bool_ops[expr.op], " al");
@@ -423,7 +449,11 @@ class ASMGenVisitor : public ASTVisitor {
     } else if (expr.op == "-") {
       print("sub rax, r10");
     } else if (expr.op == "*") {
-      print("imul rax, r10");
+      if (left_shl_opt) {
+        print("shl rax, ", log_2(left_int_const->value));
+      } else {
+        print("imul rax, r10");
+      }
     } else if (expr.op == "/") {
       print("cmp r10, 0");
       print("; begin assert call");
@@ -618,6 +648,11 @@ class ASMGenVisitor : public ASTVisitor {
 
   virtual void visit(const IfExpr& expr) override {
     expr.condition->accept(*this);
+    if (opt > 0) {
+      auto l = dynamic_cast<const IntExpr*>(expr.if_expr.get());
+      auto r = dynamic_cast<const IntExpr*>(expr.else_expr.get());
+      if (l && r && l->value == 1 && r->value == 0) return;
+    }
     pop("rax");
     print("cmp rax, 0");
     auto else_label = genlabel();
@@ -654,12 +689,16 @@ class ASMGenVisitor : public ASTVisitor {
 
     // genereate indexing code
     auto offset = 0;
-    print("mov rax, 0");
-    for (int i = 0; i < expr.indices.size(); i++) {
+    if (opt == 0) {
+      print("mov rax, 0");
+    } else {
+      print("mov rax, [rsp + ", offset, "]");
+    }
+    for (int i = opt > 0; i < expr.indices.size(); i++) {
       print("imul rax, [rsp + ", offset + i * 8 + gap * 8, "]");
       print("add rax, [rsp + ", offset + i * 8, "]");
     }
-    print("imul rax, ", type->element_type->size());
+    print("imul rax, ", type->element_type->size(), ";here??3");
     print("add rax, [rsp + ", offset + expr.indices.size() * 8 + gap * 8, "]");
 
     // stack cleanup stuff
@@ -779,12 +818,29 @@ class ASMGenVisitor : public ASTVisitor {
     auto offset = expr.expr->type->size();
 
     // generate index for result
-    print("mov rax, 0");
-    for (int i = 0; i < num_e; i++) {
-      print("imul rax, [rsp + ", offset + (num_e + i) * 8, "]");
+    if (opt == 0) {
+      print("mov rax, 0");
+    } else {
+      print("mov rax, [rsp + ", offset, "]");
+    }
+    for (int i = opt > 0; i < num_e; i++) {
+      auto int_expr = dynamic_cast<const IntExpr*>(expr.axis[i].second.get());
+      if (opt > 0 && int_expr) {
+        if (log_2(int_expr->value) >= 0) {
+          print("shl rax, ", log_2(int_expr->value));
+        } else {
+          print("imul rax, ", int_expr->value, ";here??1");
+        }
+      } else {
+        print("imul rax, [rsp + ", offset + (num_e + i) * 8, "]");
+      }
       print("add rax, [rsp + ", offset + i * 8, "]");
     }
-    print("imul rax, ", offset);
+    if (log_2(offset) >= 0 && opt > 0) {
+      print("shl rax, ", log_2(offset));
+    } else {
+      print("imul rax, ", offset, ";here??2");
+    }
     print("add rax, [rsp + ", offset + 2 * num_e * 8, "]");
 
     copy(offset, "rsp", "rax");
@@ -820,6 +876,13 @@ class ASMGenVisitor : public ASTVisitor {
 
   std::string genlabel() {
     return ".jump" + std::to_string(++jump_ctr);
+  }
+
+  int log_2(long long x) {
+    if (x > 0 && (x & (x - 1)) == 0) {
+      return (long long)log2(x);
+    }
+    return -1;
   }
 
   template <typename... Args>
