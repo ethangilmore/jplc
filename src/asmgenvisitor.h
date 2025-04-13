@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <climits>
 #include <map>
 #include <optional>
 #include <stack>
@@ -173,7 +174,7 @@ class CallingConvention {
 
 class ASMGenVisitor : public ASTVisitor {
  public:
-  ASMGenVisitor(std::shared_ptr<Context> ctx, Logger& logger) : ctx(ctx), logger(logger), data_visitor(ctx), fn_visitor(*this) {
+  ASMGenVisitor(std::shared_ptr<Context> ctx, Logger& logger, int opt) : ctx(ctx), logger(logger), data_visitor(ctx, opt), fn_visitor(*this), opt(opt) {
   }
 
   void align(int size) {
@@ -222,6 +223,13 @@ class ASMGenVisitor : public ASTVisitor {
   void push_const(asmval val, std::shared_ptr<ResolvedType> type) {
     print("; pushing const ", type->to_string(), " to stack");
     stack.push(type);
+    if (auto int_const = std::get_if<long long>(&val)) {
+      // if (opt > 0 && (*int_const & (1l << 31) - 1) == *int_const) {
+      if (opt > 0 && *int_const >= INT32_MIN && *int_const <= INT32_MAX) {
+        print("push qword ", *int_const);
+        return;
+      }
+    }
     print("mov rax, [rel ", const_map[val], "]");
     print("push rax");
   }
@@ -802,6 +810,7 @@ class ASMGenVisitor : public ASTVisitor {
 
  private:
   int jump_ctr = 0;
+  int opt = 0;
   const std::shared_ptr<Context> ctx;
   const Logger& logger;
   ASMDataVisitor data_visitor;

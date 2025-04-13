@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -15,7 +16,7 @@ class ASMDataVisitor : public ASTVisitor {
  public:
   std::map<asmval, std::string> const_map;
 
-  ASMDataVisitor(std::shared_ptr<Context> ctx) : ctx(ctx) {};
+  ASMDataVisitor(std::shared_ptr<Context> ctx, int opt) : ctx(ctx), opt(opt) {};
 
   virtual void visit(const Program& program) override {
     std::cout << std::fixed << std::setprecision(15);
@@ -25,6 +26,7 @@ class ASMDataVisitor : public ASTVisitor {
   }
 
   virtual void visit(const IntExpr& expr) override {
+    if (opt > 0 && expr.value >= INT32_MIN && expr.value <= INT32_MAX) return;
     add_int(expr.value);
   }
 
@@ -33,10 +35,12 @@ class ASMDataVisitor : public ASTVisitor {
   }
 
   virtual void visit(const TrueExpr& expr) override {
+    if (opt > 0) return;
     add_int(1);
   }
 
   virtual void visit(const FalseExpr& expr) override {
+    if (opt > 0) return;
     add_int(0);
   }
 
@@ -103,5 +107,6 @@ class ASMDataVisitor : public ASTVisitor {
 
  private:
   int ctr = 0;
+  int opt = 0;
   std::shared_ptr<Context> ctx;
 };

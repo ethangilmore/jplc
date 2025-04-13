@@ -19,6 +19,7 @@ struct Options {
   bool c;
   bool assembly;
   bool typecheck;
+  bool opt1;
 };
 
 int main(int argc, char *argv[]) {
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]) {
       .c = std::find(args.begin(), args.end(), "-i") != args.end(),
       .assembly = std::find(args.begin(), args.end(), "-s") != args.end(),
       .typecheck = std::find(args.begin(), args.end(), "-t") != args.end(),
-  };
+      .opt1 = std::find(args.begin(), args.end(), "-O1") != args.end()};
 
   if (options.lex + options.parse + options.typecheck > 1) {
     std::cerr << "Error: only one of -l, -p, -t can be specified" << std::endl;
@@ -80,7 +81,8 @@ int main(int argc, char *argv[]) {
     std::cout << "\nCompilation succeeded" << std::endl;
     exit(0);
   } else if (options.assembly) {
-    ASMGenVisitor generator(typechecker.ctx, logger);
+    int opt = options.opt1 ? 1 : 0;
+    ASMGenVisitor generator(typechecker.ctx, logger, opt);
     program->accept(generator);
     std::cout << "\nCompilation succeeded" << std::endl;
     exit(0);
