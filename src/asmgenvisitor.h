@@ -669,9 +669,17 @@ class ASMGenVisitor : public ASTVisitor {
   virtual void visit(const ArrayIndexExpr& expr) override {
     print();
     print("; begin array index expr");
-    expr.expr->accept(*this);
     auto type = expr.expr->type->as<Array>();
-    auto gap = type->rank;
+
+    auto gap = 0;
+    auto var_expr = dynamic_cast<const VarExpr*>(expr.expr.get());
+    if (opt > 0 && var_expr) {
+      auto offset = stack.variables[var_expr->identifier];
+      gap = stack.size - offset + type->rank * 8 - 8;
+    } else {
+      expr.expr->accept(*this);
+      gap = type->rank * 8;
+    }
 
     // generate code for IDX, reversed
     for (int i = expr.indices.size() - 1; i >= 0; i--) {
@@ -683,7 +691,7 @@ class ASMGenVisitor : public ASTVisitor {
       print("mov rax, [rsp + ", k * 8, "] ; here");
       print("cmp rax, 0");
       asm_assert("jge", "negative array index");
-      print("cmp rax, [rsp + ", (k + gap) * 8, "] ; here");
+      print("cmp rax, [rsp + ", k * 8 + gap, "] ; here");
       asm_assert("jl", "index too large");
     }
 
@@ -695,18 +703,34 @@ class ASMGenVisitor : public ASTVisitor {
       print("mov rax, [rsp + ", offset, "]");
     }
     for (int i = opt > 0; i < expr.indices.size(); i++) {
-      print("imul rax, [rsp + ", offset + i * 8 + gap * 8, "]");
+      print("imul rax, [rsp + ", offset + i * 8 + gap, "]");
       print("add rax, [rsp + ", offset + i * 8, "]");
     }
-    print("imul rax, ", type->element_type->size(), ";here??3");
-    print("add rax, [rsp + ", offset + expr.indices.size() * 8 + gap * 8, "]");
+    auto element_size = type->element_type->size();
+    if (opt > 0 && log_2(element_size) > 0) {
+      print("shl rax, ", log_2(element_size));
+    } else {
+      print("imul rax, ", element_size);
+    }
+
+    print("add rax, [rsp + ", offset + expr.indices.size() * 8 + gap, "]");
 
     // stack cleanup stuff
-    for (const auto& index : expr.indices) {
-      asm_free(index->type);
-      // stack.pop(index->type);  // free
+    if (opt > 0) {
+      for (const auto& index : expr.indices) {
+        // asm_free(index->type);
+        stack.pop(index->type);  // free
+      }
+      print("add rsp, ", expr.indices.size() * 8);
+    } else {
+      for (const auto& index : expr.indices) {
+        asm_free(index->type);
+        // stack.pop(index->type);  // free
+      }
     }
-    asm_free(expr.expr->type);
+    if (!(opt > 0 && var_expr)) {
+      asm_free(expr.expr->type);
+    }
     // stack.pop(expr.expr->type);  // free
     asm_alloc(type->element_type);
     copy(type->element_type->size(), "rax", "rsp");
