@@ -225,7 +225,7 @@ class ASMGenVisitor : public ASTVisitor {
   void push_const(asmval val, std::shared_ptr<ResolvedType> type) {
     print("; pushing const ", type->to_string(), " to stack");
     stack.push(type);
-    if (auto int_const = std::get_if<long long>(&val)) {
+    if (auto int_const = std::get_if<int64_t>(&val)) {
       // if (opt > 0 && (*int_const & (1l << 31) - 1) == *int_const) {
       if (opt > 0 && *int_const >= INT32_MIN && *int_const <= INT32_MAX) {
         print("push qword ", *int_const);
@@ -904,9 +904,9 @@ class ASMGenVisitor : public ASTVisitor {
     return ".jump" + std::to_string(++jump_ctr);
   }
 
-  int log_2(long long x) {
+  int log_2(int64_t x) {
     if (x > 0 && (x & (x - 1)) == 0) {
-      return (long long)log2(x);
+      return (int64_t)log2(x);
     }
     return -1;
   }
