@@ -93,6 +93,7 @@ class VoidType : public Type {
 class ReadCmd : public Cmd {
  public:
   std::string string;
+  std::string stripped_string() const { return string.substr(1, string.length() - 2); }
   std::unique_ptr<LValue> lvalue;
   ReadCmd(std::string string, std::unique_ptr<LValue> lvalue)
       : string(std::move(string)), lvalue(std::move(lvalue)) {}
@@ -103,6 +104,7 @@ class WriteCmd : public Cmd {
  public:
   std::unique_ptr<Expr> expr;
   std::string string;
+  std::string stripped_string() const { return string.substr(1, string.length() - 2); }
   WriteCmd(std::unique_ptr<Expr> expr, std::string string)
       : expr(std::move(expr)), string(std::move(string)) {}
   void accept(ASTVisitor &visitor) override { visitor.visit(*this); }

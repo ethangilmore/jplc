@@ -16,7 +16,7 @@ class ASMDataVisitor : public ASTVisitor {
  public:
   std::map<asmval, std::string> const_map;
 
-  ASMDataVisitor(std::shared_ptr<Context> ctx, int opt) : ctx(ctx), opt(opt) {};
+  ASMDataVisitor(std::shared_ptr<Context> ctx, int opt) : ctx(ctx), opt(opt){};
 
   virtual void visit(const Program& program) override {
     std::cout << std::fixed << std::setprecision(15);
@@ -45,7 +45,12 @@ class ASMDataVisitor : public ASTVisitor {
   }
 
   virtual void visit(const BinopExpr& expr) override {
-    ASTVisitor::visit(expr);
+    if (expr.op == "||" || expr.op == "&&") {
+      expr.left->accept(*this);
+      expr.right->accept(*this);
+    } else {
+      ASTVisitor::visit(expr);
+    }
     if (expr.op == "/" && expr.type->is<Int>()) {
       add_string("divide by zero");
     } else if (expr.op == "%" && expr.type->is<Int>()) {
@@ -82,6 +87,16 @@ class ASMDataVisitor : public ASTVisitor {
   virtual void visit(const ShowCmd& cmd) override {
     ASTVisitor::visit(cmd);
     add_string(cmd.expr->type->show_type(ctx.get()));
+  }
+
+  virtual void visit(const ReadCmd& cmd) override {
+    add_string(cmd.stripped_string());
+    ASTVisitor::visit(cmd);
+  }
+
+  virtual void visit(const WriteCmd& cmd) override {
+    add_string(cmd.stripped_string());
+    ASTVisitor::visit(cmd);
   }
 
   void add_int(int64_t val) {

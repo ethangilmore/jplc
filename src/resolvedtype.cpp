@@ -58,7 +58,7 @@ std::string Array::show_type(Context* ctx) {
   return "(ArrayType " + element_type->show_type(ctx) + " " + std::to_string(rank) + ")";
 }
 
-int Array::size() {
+int Array::size(Context* ctx) {
   return 8 + (rank * 8);
 }
 
@@ -86,4 +86,13 @@ std::string Struct::show_type(Context* ctx) {
   }
   result += ")";
   return result;
+}
+
+int Struct::size(Context* ctx) {
+  auto total = 0;
+  auto info = ctx->lookup<StructInfo>(name);
+  for (auto field : info->fields) {
+    total += field.second->size(ctx);
+  }
+  return total;
 }
