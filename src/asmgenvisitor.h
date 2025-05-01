@@ -79,7 +79,7 @@ class Stack {
     size -= p;
     if (p != 0) {
       if (shadow.top()) {
-        std::cout << "uh oh we're trying to unalign but theres data instead of padding\n";
+        std::cout << "; uh oh we're trying to unalign but theres data instead of padding\n";
       }
       shadow.pop();
     }
@@ -93,6 +93,17 @@ class Stack {
       shadow.pop();
     }
     shadow.push(type);
+  }
+
+  void add_lvalue(LValue* lvalue, int offset) {
+    auto base = offset;
+    variables[lvalue->identifier] = base;
+    if (auto array_lvalue = dynamic_cast<ArrayLValue*>(lvalue)) {
+      for (const auto& name : array_lvalue->indices) {
+        variables[name] = base;
+        base -= 8;
+      }
+    }
   }
 
   void add_lvalue(LValue* lvalue) {
@@ -139,7 +150,7 @@ class CallingConvention {
 
     // params
     for (const auto& type : fn.param_types) {
-      if (type->is<Int>()) {
+      if (type->is<Int>() || type->is<Bool>()) {
         if (int_count < all_int_regs.size()) {
           args.push_back(all_int_regs[int_count]);
           int_regs.push_back(all_int_regs[int_count++]);
@@ -159,6 +170,11 @@ class CallingConvention {
           offset += type->size(ctx);
           total_stack += type->size(ctx);
         }
+      } else if (type->is<Array>()) {
+        args.push_back(offset);
+        stack_args.push_back({offset, type});
+        offset += type->size(ctx);
+        total_stack += type->size(ctx);
       }
     }
 
@@ -328,20 +344,32 @@ class ASMGenVisitor : public ASTVisitor {
     print("; === END OF PRELUDE ===\n");
 
     // if return val goes on stack
+    std::cout << "; ret reg " << ret_reg << '\n';
+    std::cout << "; doing return val\n";
     if (ret_reg) {
       push("rdi", Int::shared);
       stack.variables["$return"] = stack.size - 8;
     }
 
     // recieve args
+    std::cout << "; recieve args\n";
     for (int i = 0; i < fn.params.size(); i++) {
       auto identifier = fn.params[i]->lvalue->identifier;
+      print("; identifier ", identifier);
       auto type = fn.params[i]->type->type;
+      print("; type ", type->to_string());
       auto position = calling_convention.args[i];
+      if (auto reg = std::get_if<std::string>(&position)) {
+        print("; position ", reg);
+      } else if (auto pos = std::get_if<int>(&position)) {
+        print("; position ", pos);
+      }
       if (auto arg_offset = std::get_if<int>(&position)) {
         // stack arg
-        auto offset = stack.size - *arg_offset + 16;
-        stack.add_lvalue(fn.params[i]->lvalue.get());
+        // TODO: this doesn't work
+        auto ret_size = fn.return_type->type->size(ctx.get());
+        auto offset = stack.size - *arg_offset + 16 + ret_size;
+        stack.add_lvalue(fn.params[i]->lvalue.get(), -offset);
       } else if (auto reg = std::get_if<std::string>(&position)) {
         // register
         push(*reg, type);
@@ -350,13 +378,16 @@ class ASMGenVisitor : public ASTVisitor {
     }
 
     // process stmts
+    std::cout << "; process stmts\n";
     ASTVisitor::visit(fn);
 
     // add implicit return, if needed
 
     // this is some return stuff, idk if it should go here
     print("add rsp, ", stack.size - 8, " ; local variables");
-    pop("rbp");
+    // pop("rbp");
+    stack.pop();
+    print("pop rbp");
     print("ret");
     std::cout << "\n";
 
@@ -610,6 +641,7 @@ class ASMGenVisitor : public ASTVisitor {
   }
 
   virtual void visit(const CallExpr& expr) override {
+    std::cout << "; stack size is " << stack.size << '\n';
     auto info = ctx->lookup<FnInfo>(expr.identifier);
     // print("; calling convention for ", info->name);
     // for (auto arg : info->param_types) {
@@ -620,19 +652,25 @@ class ASMGenVisitor : public ASTVisitor {
     auto convention = CallingConvention(*info, ctx.get());
     auto ret_reg = std::get_if<std::string>(&convention.ret);
 
+    // if (!ret_reg) {  // return val goes on stack, alloc space
+    //   asm_alloc(info->return_type);
+    // } else {  // else add return type to stack shadow
+    //   stack.push(info->return_type);
+    // }
+    // align(stack.size - info->return_type->size(ctx.get()));  // either way, align by: (total_satck - return_val_sapce)
+
     // prepare stack
     if (!ret_reg) {
-      print("sub rsp, ", info->return_type->size(ctx.get()));
+      asm_alloc(info->return_type);
       auto ret_offset = std::get<int>(convention.ret);
-      auto offset = stack.size - ret_offset + stack.padding.top();
       print("lea rdi, [rsp + 0]");  //, offset, "]");
-    }
-    if (ret_reg) {
-      align(8);
+      // auto offset = stack.size - ret_offset + stack.padding.top();
+      // print("lea rdi, [rsp + ", offset, "]");
     } else {
-      align(info->return_type->size(ctx.get()) + 8);
       stack.shadow.push(info->return_type);
     }
+    std::cout << "; stack size is " << stack.size << '\n';
+    align(stack.size - info->return_type->size(ctx.get()));
 
     // generate code for args
     for (int i = expr.args.size() - 1; i >= 0; i--) {
@@ -659,9 +697,15 @@ class ASMGenVisitor : public ASTVisitor {
     }
 
     // do call
+    // auto ret_offset = std::get<int>(convention.ret);
+    // auto offset = stack.size - ret_offset + stack.padding.top();
+    // print("lea rdi, [rsp + ", offset, "]");
     print("call _", info->name);
 
     // free stack args one-by-one
+    for (auto arg : convention.stack_args) {
+      asm_free(arg.type);
+    }
 
     // unalign stack
     unalign();

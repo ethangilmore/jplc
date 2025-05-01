@@ -99,6 +99,16 @@ class ASMDataVisitor : public ASTVisitor {
     ASTVisitor::visit(cmd);
   }
 
+  virtual void visit(const AssertCmd& cmd) override {
+    ASTVisitor::visit(cmd);
+    add_string(cmd.string);
+  }
+
+  virtual void visit(const AssertStmt& stmt) override {
+    ASTVisitor::visit(stmt);
+    add_string(stmt.string);
+  }
+
   void add_int(int64_t val) {
     if (const_map.count(val)) return;
     auto name = "const" + std::to_string(ctr++);

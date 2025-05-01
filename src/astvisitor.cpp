@@ -86,6 +86,9 @@ void ASTVisitor::visit(const StructLiteralExpr &node) {
   for (int i = node.fields.size() - 1; i >= 0; i--) {
     node.fields[i]->accept(*this);
   }
+  // for (const auto &field : node.fields) {
+  //   field->accept(*this);
+  // }
 }
 
 void ASTVisitor::visit(const DotExpr &node) { node.expr->accept(*this); }
@@ -98,8 +101,8 @@ void ASTVisitor::visit(const ArrayIndexExpr &node) {
 }
 
 void ASTVisitor::visit(const CallExpr &node) {
-  for (const auto &arg : node.args) {
-    arg->accept(*this);
+  for (int i = node.args.size() - 1; i >= 0; i--) {
+    node.args[i]->accept(*this);
   }
 }
 
